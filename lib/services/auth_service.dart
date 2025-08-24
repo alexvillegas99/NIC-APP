@@ -1,54 +1,62 @@
-import 'package:enjoy/services/my_firebase_messaging_service.dart';
+// services/auth_service.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 class AuthService {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  final url = dotenv.env['API_URL'] ?? ''; // Reemplaza con tu URL
+  final url =
+      dotenv.env['API_URL'] ?? ''; // Reemplaza con tu URL
 
   // Función para iniciar sesión
   Future<void> login(
-    String email,
-    String password,
-    BuildContext context,
-  ) async {
-    final url = Uri.parse('${this.url}/auth/login');
+      String email, String password, BuildContext context) async {
+    final url = Uri.parse('${this.url}/auth/login'); // Reemplaza con tu URL
 
     try {
       final response = await http.post(
         url,
-        body: {'correo': email, 'clave': password},
+        body: {
+          'email': email,
+          'password': password,
+        },
       );
-      print('Respuesta del servidor: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         final accessToken = responseData['accessToken'];
         final user = responseData['user'];
-        final role = user['rol'] ?? 'user';
 
+        // Guardar en Secure Storage
         await saveUserData(accessToken, user);
-        // await MyFirebaseMessagingService().subscribeToTopicNuevo(user['_id']);
 
-        context.go('/home');
+        // Redirigir al Home
+        if (context.mounted) {
+          context.go('/home');
+        }
       } else {
-        throw Exception('Correo o contraseña incorrectos');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error en el inicio de sesión')),
+          );
+        }
       }
     } catch (e) {
-      print('Error al iniciar sesión: $e');
-      throw Exception('Error de conexión o datos inválidos');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error de conexión')),
+        );
+      }
     }
   }
 
+  
+
   // Guardar el token y los datos del usuario
   Future<void> saveUserData(
-    String accessToken,
-    Map<String, dynamic> user,
-  ) async {
+      String accessToken, Map<String, dynamic> user) async {
     await _storage.write(key: 'accessToken', value: accessToken);
     await _storage.write(key: 'user', value: json.encode(user));
 
@@ -67,8 +75,9 @@ class AuthService {
 
   // Obtener los datos del usuario guardados
   Future<Map<String, dynamic>?> getUser() async {
+   
     final userString = await _storage.read(key: 'user');
-    print('usuario guardado $userString');
+     print('usuario guardado $userString');
     if (userString != null) {
       return json.decode(userString);
     }
@@ -83,9 +92,8 @@ class AuthService {
       return false; // No hay token guardado
     }
 
-    final url = Uri.parse(
-      '${this.url}/auth/refresh-token',
-    ); // Reemplaza con tu URL
+    final url =
+        Uri.parse('${this.url}/auth/refresh-token'); // Reemplaza con tu URL
     print(url);
     try {
       final response = await http.get(
@@ -119,7 +127,7 @@ class AuthService {
   }
 
   // Verificar si el usuario está autenticado
-  /*   Future<bool> isUserAuthenticated() async {
+/*   Future<bool> isUserAuthenticated() async {
     final token = await getToken();
     print('Token actualllllllllllllllllll: $token');
     if (token == null) {
@@ -158,17 +166,12 @@ class AuthService {
  */
   // Eliminar los datos de autenticación (logout)
   Future<void> logout() async {
-    final user = await getUser();
-    final userId = user!['_id'];
-
-    await MyFirebaseMessagingService().unsubscribeFromTopicNuevo(userId);
-    print('Eliminando datos de autenticación...');
     await _storage.delete(key: 'accessToken');
     await _storage.delete(key: 'user');
     print('Datos de autenticación eliminados');
   }
 
-  Future<bool> hasToken() async {
+    Future<bool> hasToken() async {
     final token = await _storage.read(key: 'accessToken');
     return token != null; // Retorna true si hay un token, false si no
   }

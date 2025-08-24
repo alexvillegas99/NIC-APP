@@ -11,16 +11,16 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.pixelsmart.cuponera_app"
+    namespace "com.pixelsmart.nic_pre_u"
     compileSdkVersion 35
     ndkVersion "27.0.12077973"
 
     defaultConfig {
-        applicationId "com.pixelsmart.cuponera_app"
+        applicationId "com.pixelsmart.nic_pre_u"
         minSdkVersion 24
         targetSdkVersion 35
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName '1.0.1'
     }
 
     compileOptions {

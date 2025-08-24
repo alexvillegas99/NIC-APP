@@ -56,23 +56,6 @@ class MyFirebaseMessagingService {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   }
 
-
-
-//Suscribir a actualizacion suscripcion _id del usuario
-
-  Future<void> subscribeToTopicNuevo(String topic) async {
-    await _firebaseMessaging.subscribeToTopic(topic);
-    print("📌 Suscrito al tema '$topic'");
-  }
-
-  //Desuscribir a actualizacion suscripcion _id del usuario
-  Future<void> unsubscribeFromTopicNuevo(String topic) async {
-    await _firebaseMessaging.unsubscribeFromTopic(topic);
-    print("📌 Desuscrito al tema '$topic'");
-  }
-  
-
-
   /// 📌 **Verificar permisos y solicitarlos si fueron denegados**
   Future<void> checkPermissions() async {
     NotificationSettings settings = await _firebaseMessaging.getNotificationSettings();
