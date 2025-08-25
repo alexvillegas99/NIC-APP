@@ -8,10 +8,10 @@ import 'package:nic_pre_u/services/my_firebase_messaging_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(); 
-  await Firebase.initializeApp();
+  //await Firebase.initializeApp();
 
   // 🔥 Inicializar servicio de notificaciones
-  await MyFirebaseMessagingService().initNotifications();
+  //await MyFirebaseMessagingService().initNotifications();
 
   final AuthService authService = AuthService();
   final bool isAuthenticated = await authService.hasToken();
