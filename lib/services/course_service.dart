@@ -39,7 +39,7 @@ class CourseService {
     }
 
     final uri = Uri.parse(
-      '$baseUrl/moodle/courses/with-grades?username=1850939834',
+      '$baseUrl/moodle/courses/with-grades?username=$username',
     );
     final res = await http.get(uri, headers: headers);
 
