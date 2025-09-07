@@ -5,23 +5,23 @@ import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class AuthService {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  final url =
-      dotenv.env['API_URL'] ?? ''; // Reemplaza con tu URL
+  final url = dotenv.env['API_URL'] ?? ''; // Reemplaza con tu URL
 
   // Función para iniciar sesión
   Future<void> login(
-      String email, String password, BuildContext context) async {
+    String email,
+    String password,
+    BuildContext context,
+  ) async {
     final url = Uri.parse('${this.url}/auth/login'); // Reemplaza con tu URL
 
     try {
       final response = await http.post(
         url,
-        body: {
-          'email': email,
-          'password': password,
-        },
+        body: {'email': email, 'password': password},
       );
 
       if (response.statusCode == 200) {
@@ -45,18 +45,18 @@ class AuthService {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error de conexión')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Error de conexión')));
       }
     }
   }
 
-  
-
   // Guardar el token y los datos del usuario
   Future<void> saveUserData(
-      String accessToken, Map<String, dynamic> user) async {
+    String accessToken,
+    Map<String, dynamic> user,
+  ) async {
     await _storage.write(key: 'accessToken', value: accessToken);
     await _storage.write(key: 'user', value: json.encode(user));
 
@@ -75,9 +75,7 @@ class AuthService {
 
   // Obtener los datos del usuario guardados
   Future<Map<String, dynamic>?> getUser() async {
-   
     final userString = await _storage.read(key: 'user');
-     print('usuario guardado $userString');
     if (userString != null) {
       return json.decode(userString);
     }
@@ -92,8 +90,9 @@ class AuthService {
       return false; // No hay token guardado
     }
 
-    final url =
-        Uri.parse('${this.url}/auth/refresh-token'); // Reemplaza con tu URL
+    final url = Uri.parse(
+      '${this.url}/auth/refresh-token',
+    ); // Reemplaza con tu URL
     print(url);
     try {
       final response = await http.get(
@@ -127,7 +126,7 @@ class AuthService {
   }
 
   // Verificar si el usuario está autenticado
-/*   Future<bool> isUserAuthenticated() async {
+  /*   Future<bool> isUserAuthenticated() async {
     final token = await getToken();
     print('Token actualllllllllllllllllll: $token');
     if (token == null) {
@@ -171,8 +170,34 @@ class AuthService {
     print('Datos de autenticación eliminados');
   }
 
-    Future<bool> hasToken() async {
+  Future<bool> hasToken() async {
     final token = await _storage.read(key: 'accessToken');
     return token != null; // Retorna true si hay un token, false si no
   }
+
+  //CREAR SERVICIO PARA CONSUMIR ASUSTENTES POR CEDULA OBTENDINEO DESDE EL GETUSER
+Future<List<dynamic>> fetchAsistentesPorCedula() async {
+  final userData = await getUser();
+  final cedula = userData?['cedula'] ?? '';
+  if (cedula.isEmpty) return [];
+
+  final uri = Uri.parse('$url/asistentes/buscar/por-cedula/$cedula');
+  final res = await http.get(uri);
+
+  print('Asistentes encontrados (status): ${res.statusCode}');
+  print('Asistentes encontrados (body): ${res.body}');
+
+  if (res.statusCode == 200 || res.statusCode == 201) {
+  final body = json.decode(res.body);
+  print('Asistentes decodificados: $body');
+
+  if (body is List) {
+    return body; // ya es lista
+  } else if (body is Map<String, dynamic>) {
+    return [body]; // 👈 envolver el objeto en lista
+  }
+}
+return [];
+
+}
 }

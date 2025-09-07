@@ -30,6 +30,69 @@ class _ScanScreenState extends State<ScanScreen> {
     super.dispose();
   }
 
+void _showAttendanceSnackbar(Map<String, dynamic> asistencia) {
+  if (!mounted) return;
+
+  final nombre = asistencia['nombre'] ?? '';
+  final curso = asistencia['cursoNombre'] ?? '';
+  final porcentaje = asistencia['porcentaje'] ?? 0;
+  final estado = asistencia['estado'] ?? false; // true o false
+
+  // color dinámico según estado
+  final Color bgColor = estado ? Colors.green : Colors.redAccent;
+
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                estado ? Icons.check_circle : Icons.error,
+                color: Colors.white,
+                size: 32,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      estado
+                          ? "Asistencia registrada"
+                          : "Asistencia no válida",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text("👤 $nombre", style: const TextStyle(color: Colors.white)),
+                    Text("📘 Curso: $curso", style: const TextStyle(color: Colors.white)),
+                    Text("📊 Asistencia: $porcentaje%", style: const TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 7),
+      ),
+    );
+}
+
+
   Future<void> _sendAttendance(String qrData) async {
     if (!canScan || isProcessing) return;
 
@@ -76,11 +139,12 @@ class _ScanScreenState extends State<ScanScreen> {
         ///
         final data =  jsonDecode(response.body);
         final bool isValid = data['asistencia']['estado'];
-     
-          _showSnackbar(
-            '✅ Asistencia registrada para ${data['asistencia']['nombre']} perteneciente al curso ${data['asistencia']['cursoNombre']}',
+        print('dataaaaa ${data['asistencia']}');
+     _showAttendanceSnackbar(data['asistencia']);
+        /*   _showSnackbar(
+            '✅ Asistencia registrada para ${data['asistencia']['nombre']} perteneciente al curso ${data['asistencia']['cursoNombre']} porcentaje asistencia ${data['asistencia']['porcentaje']}',
             isValid ? Colors.green : Colors.orange,
-          );
+          ); */
     
       } else {
         final msg = _getErrorMessage(response.statusCode);

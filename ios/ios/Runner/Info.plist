@@ -5,7 +5,7 @@
 <key>CFBundleDisplayName</key>
 <string>NIC PreU</string>
 <key>NSCameraUsageDescription</key>
-<string>Necesitamos acceder a la cámara para escanear códigos QR.</string>
+<string>La cámara se utiliza para escanear códigos QR de cupones para validar promociones dentro de la app.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleExecutable</key>

@@ -31,32 +31,38 @@ class CourseService {
   }
 
   // lib/features/courses/data/course_service.dart
-  Future<List<dynamic>> fetchCoursesWithGradesByUsername() async {
-    final userData = await _authService.getUser();
-    final username = (userData?['cedula'] ?? '').toString();
-    if (username.isEmpty) {
-      return [];
-    }
-
-    final uri = Uri.parse(
-      '$baseUrl/moodle/courses/with-grades?username=$username',
-    );
-    final res = await http.get(uri, headers: headers);
-
-    if (res.statusCode != 200) {
-      throw Exception('Error ${res.statusCode} al obtener cursos con notas');
-    }
-
-    final body = json.decode(res.body);
-
-    // Si tu backend ya devuelve directamente el ARRAY de cursos (como pasaste):
-    if (body is List) return body; // <- List<dynamic>
-
-    // Si alguna vez devuelve { userId, totalCourses, courses: [...] }:
-    if (body is Map && body['courses'] is List) return body['courses'] as List;
-
-    throw Exception('Formato de respuesta no esperado');
+Future<List<dynamic>> fetchCoursesWithGradesByUsername() async {
+  final userData = await _authService.getUser();
+  final username = (userData?['cedula'] ?? '').toString();
+  if (username.isEmpty) {
+    return [];
   }
+
+  final uri = Uri.parse(
+    '$baseUrl/moodle/courses/with-grades?username=$username',
+  );
+
+  final res = await http.get(uri, headers: headers);
+
+  // ✅ Manejo de 400 "Usuario no encontrado"
+  if (res.statusCode == 400) {
+    final body = json.decode(res.body);
+    if (body is Map && body['message'] == 'Usuario no encontrado') {
+      return []; // Devuelve array vacío sin lanzar error
+    }
+  }
+
+  if (res.statusCode != 200) {
+    throw Exception('Error ${res.statusCode} al obtener cursos con notas');
+  }
+
+  final body = json.decode(res.body);
+
+  if (body is List) return body;
+  if (body is Map && body['courses'] is List) return body['courses'] as List;
+
+  throw Exception('Formato de respuesta no esperado');
+}
 
   String _coursesKey(String username) => 'courses_with_grades_$username';
 
