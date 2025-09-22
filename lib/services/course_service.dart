@@ -39,7 +39,7 @@ Future<List<dynamic>> fetchCoursesWithGradesByUsername() async {
   }
 
   final uri = Uri.parse(
-    '$baseUrl/moodle/courses/with-grades?username=$username',
+    '$baseUrl/moodle/courses/with-gradesv2?username=$username',
   );
 
   final res = await http.get(uri, headers: headers);

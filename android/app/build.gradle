@@ -13,14 +13,14 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace "com.pixelsmart.nic_pre_u"
     compileSdkVersion 35
-    ndkVersion "27.0.12077973"
+    ndkVersion "28.0.12433566"
 
     defaultConfig {
         applicationId "com.pixelsmart.nic_pre_u"
         minSdkVersion 24
         targetSdkVersion 35
-        versionCode 10 //incrementar para cad publicacion
-        versionName '1.0.9' //incrementar por ejemplo el 1.0.+
+        versionCode 13 //incrementar para cad publicacion
+        versionName '1.0.11' //incrementar por ejemplo el 1.0.+
     }
 
     compileOptions {
@@ -55,4 +55,21 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+
+    // --- Forzar CameraX 16 KB ready ---
+    implementation "androidx.camera:camera-core:1.4.1"
+    implementation "androidx.camera:camera-camera2:1.4.1"
+    implementation "androidx.camera:camera-lifecycle:1.4.1"
+    implementation "androidx.camera:camera-view:1.4.1"
+    implementation "androidx.camera:camera-mlkit-vision:1.4.1" // si tu plugin la usa
 }
+
+configurations.all {
+    resolutionStrategy.eachDependency { d ->
+        if (d.requested.group == "androidx.camera") {
+            d.useVersion("1.4.1") // o superior estable si la tienes
+        }
+    }
+}
+
+

@@ -105,9 +105,9 @@ class _MyQRScreenState extends State<MyQRScreen> {
         ),
         title: Row(
           children: const [
-            Text('NID', style: TextStyle(color: kText, fontWeight: FontWeight.w900)),
-            SizedBox(width: 8),
-            Text('Seminario Intensivo',
+            /* Text('', style: TextStyle(color: kText, fontWeight: FontWeight.w900)),
+            SizedBox(width: 8), */
+            Text('NIC',
                 style: TextStyle(color: kPurple, fontWeight: FontWeight.w700)),
           ],
         ),
