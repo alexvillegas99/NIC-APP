@@ -4,6 +4,9 @@ import 'package:nic_pre_u/data/course.dart';
 import 'package:nic_pre_u/screens/home_screen.dart';
 import 'package:nic_pre_u/screens/login_screen.dart';
 import 'package:nic_pre_u/screens/myqr_screen.dart';
+import 'package:nic_pre_u/screens/reportes/asistencia_report_screen.dart';
+import 'package:nic_pre_u/screens/reportes/notas_report_screen.dart';
+import 'package:nic_pre_u/screens/reportes/orientacion_vocacional_screen.dart';
 import 'package:nic_pre_u/screens/scan_screen.dart';
 import 'package:nic_pre_u/services/auth_service.dart';
 import 'package:nic_pre_u/services/course_service.dart';
@@ -51,6 +54,22 @@ GoRouter buildRouter() {
             path: 'myqr',
             name: 'myqr',
             builder: (context, state) => const MyQRScreen(),
+          ),
+            // ⬇️ nuevas rutas
+          GoRoute(
+            path: 'asistencia',
+            name: 'asistencia',
+            builder: (context, state) => const AsistenciaReportScreen(),
+          ),
+          GoRoute(
+            path: 'notas',
+            name: 'notas',
+            builder: (context, state) => const NotasReportScreen(),
+          ),
+          GoRoute(
+            path: 'orientacion',
+            name: 'orientacion',
+            builder: (context, state) => const OVScreen(),
           ),
           GoRoute(
             path: 'courses',

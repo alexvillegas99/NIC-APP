@@ -1,4 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.pixelsmart.nic_pre_u">
+
+
+   <!-- Necesario para llamadas HTTP/HTTPS -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Cámara para los escáneres (barcode_scan2 / mobile_scanner) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Notificaciones (Android 13+) si usas firebase_messaging / local_notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- (Opcional) Vibración para feedback del escáner -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
         android:label="NIC"
         android:name="${applicationName}"

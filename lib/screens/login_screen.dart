@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // ← para FilteringTextInputFormatter
+import 'package:flutter/services.dart';
 import 'package:nic_pre_u/services/auth_service.dart';
-import 'package:nic_pre_u/shared/widgets/background_shapes.dart'; // si no quieres el fondo, coméntalo
+import 'package:nic_pre_u/shared/widgets/background_shapes.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,19 +13,20 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _cedulaController = TextEditingController(); // ← NUEVO
-  final _authService = AuthService();
+  final _cedulaController = TextEditingController();
 
+  final _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
+
   bool _obscurePassword = true;
-  bool _credentialMode = false; // ← NUEVO: modo credencial (solo cédula)
+  bool _credentialMode = false; // modo credencial: solo cédula
 
   // Colores del diseño
   static const Color bg = Color(0xFF0E0F16);
   static const Color card = Color(0xFF111320);
   static const Color textPrimary = Color(0xFFEDEDED);
   static const Color textSecondary = Color(0xFF9EA3B0);
-  static const Color accent = Color(0xFF7C3AED); // morado del botón/borde
+  static const Color accent = Color(0xFF7C3AED);
   static const Color inputFill = Color(0xFF15182A);
   static const double radius = 12;
 
@@ -91,8 +92,16 @@ class _LoginScreenState extends State<LoginScreen> {
         : _passwordController.text;
 
     _showLoadingDialog(context);
-    await _authService.login(username, password, context);
-    if (mounted) Navigator.of(context).pop();
+
+    await _authService.login(
+      username,
+      password,
+      context,
+      mode: _credentialMode ? LoginMode.credential : LoginMode.classic,
+      cedula: _credentialMode ? _cedulaController.text.trim() : null,
+    );
+
+    if (mounted) Navigator.of(context).pop(); // cerrar loading
   }
 
   @override
@@ -159,8 +168,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             transitionBuilder: (child, anim) =>
                                 FadeTransition(opacity: anim, child: child),
                             child: _credentialMode
-                                ? _buildCedulaForm()     // ← modo credencial
-                                : _buildEmailPasswordForm(), // ← modo clásico
+                                ? _buildCedulaForm()
+                                : _buildEmailPasswordForm(),
                           ),
                         ),
                       ),
@@ -197,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // --- Form clásico: Email + Password (sin cambios visuales) ---
+  // --- Form clásico: Email + Password ---
   Widget _buildEmailPasswordForm() {
     return Column(
       key: const ValueKey('form_email_password'),
@@ -218,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
             icon: Icons.mail_outline,
           ),
           validator: (v) {
-            if (_credentialMode) return null; // no valida en este modo
+            if (_credentialMode) return null;
             if (v == null || v.trim().isEmpty) return 'Ingresa tu email';
             final ok = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(v.trim());
             return ok ? null : 'Email inválido';
@@ -250,8 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
             return null;
           },
         ),
-        const SizedBox(height: 16),
-        const SizedBox(height: 4),
+        const SizedBox(height: 20),
         SizedBox(
           height: 48,
           child: ElevatedButton(
@@ -264,7 +272,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             child: const Text(
-              'INICIAR SESION',
+              'INICIAR SESIÓN',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
           ),
@@ -297,17 +305,15 @@ class _LoginScreenState extends State<LoginScreen> {
             if (!_credentialMode) return null;
             final val = (v ?? '').trim();
             if (val.isEmpty) return 'Ingresa tu cédula';
-            // Ecuador suele ser 10 dígitos; ajusta si tu backend acepta otra longitud:
             if (val.length != 10) return 'Cédula inválida (10 dígitos)';
             return null;
           },
         ),
-        const SizedBox(height: 16),
-        const SizedBox(height: 4),
+        const SizedBox(height: 20),
         SizedBox(
           height: 48,
           child: ElevatedButton(
-            onPressed: _submit, // enviará cedula como user y pass
+            onPressed: _submit,
             style: ElevatedButton.styleFrom(
               backgroundColor: accent,
               foregroundColor: Colors.white,

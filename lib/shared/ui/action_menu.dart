@@ -1,4 +1,3 @@
-// lib/shared/widgets/action_menu.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../ui/design_system.dart';
@@ -6,18 +5,32 @@ import '../ui/design_system.dart';
 class ActionMenu extends StatelessWidget {
   final List<Map<String, dynamic>> items;
   final EdgeInsets padding;
-  final int columns;
+
+  /// Máximo ancho que puede usar cada tile antes de crear una nueva columna.
+  /// Ej: 300 → en 600px habrá 2 col, en 900px 3 col, etc.
+  final double maxTileWidth;
+
+  /// Alto fijo de cada tile (ajústalo si tu texto es más largo)
+  final double tileHeight;
 
   const ActionMenu({
     super.key,
     required this.items,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16),
-    this.columns = 2,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+    this.maxTileWidth = 300,
+    this.tileHeight = 160, // <-- súbelo a 172/180 si aún te queda justo
   });
 
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
+
+    final width = MediaQuery.sizeOf(context).width;
+    final crossAxisSpacing = 12.0;
+    final mainAxisSpacing = 12.0;
+
+    // Cálculo dinámico de columnas: al menos 2
+    final cols = (width / maxTileWidth).floor().clamp(2, 6);
 
     return Padding(
       padding: padding,
@@ -25,11 +38,12 @@ class ActionMenu extends StatelessWidget {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: items.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: columns,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.90,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: (width - (cols - 1) * crossAxisSpacing - padding.horizontal) / cols + crossAxisSpacing,
+          mainAxisSpacing: mainAxisSpacing,
+          crossAxisSpacing: crossAxisSpacing,
+          // Altura fija por tile para evitar overflow por contenido interno
+          mainAxisExtent: tileHeight,
         ),
         itemBuilder: (_, i) => _ActionTile(data: items[i]),
       ),
@@ -51,18 +65,12 @@ class _ActionTile extends StatelessWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-         onTap: route == null ? null : () {
-        // Si guardas PATHs absolutos/relativos en 'route'
-        context.push(route);
-
-        // Si en vez de path guardas el nombre de ruta:
-        // context.pushNamed(route);
-      },
+      onTap: route == null ? null : () => context.push(route),
       child: Ink(
         decoration: DS.cardDeco(glow: highlight),
         child: Stack(
           children: [
-            // Gradiente suave / brillo
+            // Gradiente suave
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
@@ -93,18 +101,28 @@ class _ActionTile extends StatelessWidget {
                     ),
                     child: Icon(icon, color: DS.text, size: 26),
                   ),
-                  const SizedBox(height: 12),
-                  Text(text, style: DS.h2),
-                  if (desc != null) ...[
+                  const SizedBox(height: 10),
+                  // Título
+                Text(
+  text,
+  maxLines: 2,              // permite hasta 2 líneas
+  overflow: TextOverflow.ellipsis,
+  softWrap: true,           // activa salto de línea
+  style: DS.h2,
+),
+                  if (desc != null && desc.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis, style: DS.pDim),
+                    Text(
+                      desc,
+                      maxLines: 2, // importa para no romper la altura fija
+                      overflow: TextOverflow.ellipsis,
+                      style: DS.pDim,
+                    ),
                   ],
                   const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Icon(Icons.chevron_right, color: DS.textDim),
-                    ],
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: Icon(Icons.chevron_right, color: DS.textDim),
                   ),
                 ],
               ),

@@ -47,7 +47,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (_pageController.hasClients) {
-        final nextPage = ((_pageController.page ?? 0).toInt() + 1) % cardImages.length;
+        final nextPage =
+            ((_pageController.page ?? 0).toInt() + 1) % cardImages.length;
         _pageController.animateToPage(
           nextPage,
           duration: const Duration(milliseconds: 500),
@@ -112,7 +113,12 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // Header con gradiente (igual que antes)
                 Container(
-                  padding: const EdgeInsets.only(top: 40, left: 16, right: 16, bottom: 20),
+                  padding: const EdgeInsets.only(
+                    top: 40,
+                    left: 16,
+                    right: 16,
+                    bottom: 20,
+                  ),
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
@@ -124,7 +130,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       bottomRight: Radius.circular(30),
                     ),
                     boxShadow: [
-                      BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
                     ],
                   ),
                   child: Column(
@@ -139,37 +149,61 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
 
                 // Body
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _refreshAll,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          FutureBuilder<String>(
-                            future: _getUserRole(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return const Center(child: CircularProgressIndicator());
-                              }
-                              final userRole = snapshot.data ?? 'ADMIN';
-                              final menuItems = MenuCard(userRole: userRole).getMenuItems();
-                              return ActionMenu(items: menuItems, columns: 2);
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                          CoursesSection(service: CourseService(), maxItems: 50),
-                          const SizedBox(height: 20),
-                          _buildAutoScrollingCards(),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
+Expanded(
+  child: RefreshIndicator(
+    onRefresh: _refreshAll,
+    child: SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FutureBuilder<String>(
+            future: _getUserRole(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+
+              final userRole = snapshot.data ?? 'ADMIN';
+
+              final menuItems = MenuCard(
+                userRole: userRole,
+              ).getMenuItems();
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ActionMenu(
+                    items: menuItems,
+                    maxTileWidth: 280,
+                    tileHeight: 200,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+
+                  // 👇 Solo se muestra si es ESTUDIANTE
+                  if (userRole.toUpperCase() == 'ESTUDIANTE') ...[
+                    CoursesSection(
+                      service: CourseService(),
+                      maxItems: 50,
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  _buildAutoScrollingCards(),
+                  const SizedBox(height: 20),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    ),
+  ),
+)
+             ],
             ),
           ],
         ),
@@ -203,7 +237,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final d = v[r'$date'];
       if (d is String) return d;
       if (d is int) {
-        return DateTime.fromMillisecondsSinceEpoch(d, isUtc: true).toUtc().toIso8601String();
+        return DateTime.fromMillisecondsSinceEpoch(
+          d,
+          isUtc: true,
+        ).toUtc().toIso8601String();
       }
     }
     return null;
@@ -280,14 +317,23 @@ class _HomeScreenState extends State<HomeScreen> {
         color: const Color(0xFF111320),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white12),
-        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 6))],
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: color.withOpacity(.15)),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withOpacity(.15),
+            ),
             child: Icon(Icons.event, color: color),
           ),
           const SizedBox(width: 12),
@@ -297,13 +343,20 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const Text(
                   'Orientación Vocacional',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: color.withOpacity(.15),
                         borderRadius: BorderRadius.circular(999),
@@ -311,13 +364,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: Text(
                         etapa,
-                        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: .2),
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: .2,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
                     const Icon(Icons.schedule, size: 14, color: Colors.white70),
                     const SizedBox(width: 4),
-                    Text(fecha, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                    Text(
+                      fecha,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -341,28 +405,43 @@ class _HomeScreenState extends State<HomeScreen> {
         final rol = (user['rol'] ?? '').toString().trim();
         print('rol en OV: $rol');
 
-        if (rol != 'ESTUDIANTE') return const SizedBox.shrink();
+        if (rol != 'estudiante') return const SizedBox.shrink();
 
         return FutureBuilder<List<dynamic>>(
           future: _authService.fetchAsistentesPorCedula(),
           builder: (context, snap) {
             if (snap.connectionState != ConnectionState.done) {
-              return _ovCard(etapa: 'Cargando…', fecha: '—', color: Colors.grey);
+              return _ovCard(
+                etapa: 'Cargando…',
+                fecha: '—',
+                color: Colors.grey,
+              );
             }
             if (snap.hasError) {
               debugPrint('fetchAsistentesPorCedula error: ${snap.error}');
-              return _ovCard(etapa: 'Sin asignar', fecha: '—', color: Colors.grey);
+              return _ovCard(
+                etapa: 'Sin asignar',
+                fecha: '—',
+                color: Colors.grey,
+              );
             }
 
             final lista = snap.data ?? [];
             if (lista.isEmpty || lista.first is! Map<String, dynamic>) {
-              return _ovCard(etapa: 'Sin asignar', fecha: '—', color: Colors.grey);
+              return _ovCard(
+                etapa: 'Sin asignar',
+                fecha: '—',
+                color: Colors.grey,
+              );
             }
 
             final asistente = lista.first as Map<String, dynamic>;
             final ov = _extractOVFromAsistente(asistente);
 
-            final etapaRaw = (ov['etapaActual'] ?? 'SIN_CITA').toString().trim().toUpperCase();
+            final etapaRaw = (ov['etapaActual'] ?? 'SIN_CITA')
+                .toString()
+                .trim()
+                .toUpperCase();
 
             dynamic fechaLike = ov['siguienteCitaISO'];
             if (fechaLike == null) {
@@ -376,7 +455,11 @@ class _HomeScreenState extends State<HomeScreen> {
             final fechaBonita = _formatOVDateLike(fechaLike);
             final color = _etapaColor(etapaRaw);
 
-            return _ovCard(etapa: etapaBonita, fecha: fechaBonita, color: color);
+            return _ovCard(
+              etapa: etapaBonita,
+              fecha: fechaBonita,
+              color: color,
+            );
           },
         );
       },
@@ -400,16 +483,28 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFF111320),
             borderRadius: BorderRadius.circular(16),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 6))],
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10,
+                offset: Offset(0, 6),
+              ),
+            ],
           ),
           child: Row(
             children: [
               Container(
                 width: 48,
                 height: 48,
-                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF7C3AED)),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF7C3AED),
+                ),
                 padding: const EdgeInsets.all(8),
-                child: Image.asset('assets/imagenes/logonic.png', fit: BoxFit.contain),
+                child: Image.asset(
+                  'assets/imagenes/logonic.png',
+                  fit: BoxFit.contain,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -418,13 +513,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     RichText(
                       text: TextSpan(
-                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
                         children: [
                           const TextSpan(text: 'Estado: '),
                           TextSpan(
                             text: estadoText,
                             style: TextStyle(
-                              color: activo ? const Color(0xFF22C55E) : Colors.redAccent,
+                              color: activo
+                                  ? const Color(0xFF22C55E)
+                                  : Colors.redAccent,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -455,10 +555,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: _refreshAll,
                 icon: const Icon(Icons.refresh, color: Colors.white),
                 style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(const Color(0xFF1F2937)), // gris oscuro
-                  shape: WidgetStateProperty.all(
-                    const CircleBorder(),
-                  ),
+                  backgroundColor: WidgetStateProperty.all(
+                    const Color(0xFF1F2937),
+                  ), // gris oscuro
+                  shape: WidgetStateProperty.all(const CircleBorder()),
                 ),
               ),
 

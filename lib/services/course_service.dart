@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:nic_pre_u/data/course.dart';
 import 'package:nic_pre_u/data/course_with_grades.dart';
 import 'package:nic_pre_u/services/auth_service.dart';
+import 'package:nic_pre_u/shared/utils/file_downloader.dart';
 
 class CourseService {
   final Map<String, String> headers;
@@ -31,38 +32,38 @@ class CourseService {
   }
 
   // lib/features/courses/data/course_service.dart
-Future<List<dynamic>> fetchCoursesWithGradesByUsername() async {
-  final userData = await _authService.getUser();
-  final username = (userData?['cedula'] ?? '').toString();
-  if (username.isEmpty) {
-    return [];
-  }
-
-  final uri = Uri.parse(
-    '$baseUrl/moodle/courses/with-gradesv2?username=$username',
-  );
-
-  final res = await http.get(uri, headers: headers);
-
-  // ✅ Manejo de 400 "Usuario no encontrado"
-  if (res.statusCode == 400) {
-    final body = json.decode(res.body);
-    if (body is Map && body['message'] == 'Usuario no encontrado') {
-      return []; // Devuelve array vacío sin lanzar error
+  Future<List<dynamic>> fetchCoursesWithGradesByUsername() async {
+    final userData = await _authService.getUser();
+    final username = (userData?['cedula'] ?? '').toString();
+    if (username.isEmpty) {
+      return [];
     }
+
+    final uri = Uri.parse(
+      '$baseUrl/moodle/courses/with-gradesv2?username=$username',
+    );
+
+    final res = await http.get(uri, headers: headers);
+
+    // ✅ Manejo de 400 "Usuario no encontrado"
+    if (res.statusCode == 400) {
+      final body = json.decode(res.body);
+      if (body is Map && body['message'] == 'Usuario no encontrado') {
+        return []; // Devuelve array vacío sin lanzar error
+      }
+    }
+
+    if (res.statusCode != 200) {
+      throw Exception('Error ${res.statusCode} al obtener cursos con notas');
+    }
+
+    final body = json.decode(res.body);
+
+    if (body is List) return body;
+    if (body is Map && body['courses'] is List) return body['courses'] as List;
+
+    throw Exception('Formato de respuesta no esperado');
   }
-
-  if (res.statusCode != 200) {
-    throw Exception('Error ${res.statusCode} al obtener cursos con notas');
-  }
-
-  final body = json.decode(res.body);
-
-  if (body is List) return body;
-  if (body is Map && body['courses'] is List) return body['courses'] as List;
-
-  throw Exception('Formato de respuesta no esperado');
-}
 
   String _coursesKey(String username) => 'courses_with_grades_$username';
 
@@ -119,4 +120,38 @@ Future<List<dynamic>> fetchCoursesWithGradesByUsername() async {
     await _storage.delete(key: _coursesKey(cedula));
   }
 
+  Uri buildNotasPdfUri(String cedula) {
+    return Uri.parse('$baseUrl/moodle/notas/pdf?cedula=$cedula');
+  }
+
+  Future<void> descargarNotasPdfDelUsuario({
+    ProgressCallback? onProgress,
+  }) async {
+    final user = await _authService.getUser();
+    final cedula = (user?['cedula'] ?? '').toString();
+    if (cedula.isEmpty) {
+      throw Exception('No hay cédula en la sesión');
+    }
+
+    final uri = buildNotasPdfUri(cedula);
+
+    // Si usas token:
+    String? token;
+    try {
+      token = await _authService.getToken();
+    } catch (_) {}
+
+    final hdrs = <String, String>{
+      'Accept': 'application/pdf',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      ...headers,
+    };
+
+    await FileDownloader.downloadAndOpen(
+      uri,
+      filename: 'reporte_notas_$cedula.pdf',
+      headers: hdrs,
+      onProgress: onProgress,
+    );
+  }
 }

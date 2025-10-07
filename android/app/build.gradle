@@ -19,8 +19,8 @@ android {
         applicationId "com.pixelsmart.nic_pre_u"
         minSdkVersion 24
         targetSdkVersion 35
-        versionCode 13 //incrementar para cad publicacion
-        versionName '1.0.11' //incrementar por ejemplo el 1.0.+
+        versionCode 14 //incrementar para cad publicacion
+        versionName '1.0.12' //incrementar por ejemplo el 1.0.+
     }
 
     compileOptions {
