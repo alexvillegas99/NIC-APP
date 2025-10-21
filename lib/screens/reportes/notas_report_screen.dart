@@ -813,32 +813,26 @@ class _SeccionBlockDark extends StatelessWidget {
           const SizedBox(height: 8),
 
           // Tabla
-          _TableDark(
-            headers: const ['Actividad', 'Nota', 'Máx', 'Fecha'],
-            rows: items.map<List<String>>((it) {
-              final itemName = (it['itemName'] ?? '-').toString().replaceAll(
-                '_',
-                ' ',
-              );
-              final raw = it['graderaw'];
-              final graderaw = raw == null
-                  ? '-'
-                  : raw.toString(); // 👈 sin nota → "-"
-              final max = (it['max']?.toString() ?? '-');
-              final fechaVal = it['gradedategraded'];
-              final fecha =
-                  (fechaVal == null || fechaVal.toString().trim().isEmpty)
-                  ? '-'
-                  : fechaVal.toString();
-              final comentarioPlano = _stripHtml(
-                (it['comentario'] ?? '').toString(),
-              );
-              final act = comentarioPlano.isEmpty
-                  ? itemName
-                  : '$itemName\n— $comentarioPlano';
-              return [act, graderaw, max, fecha];
-            }).toList(),
-          ),
+        // Tabla
+_TableDark(
+  headers: const ['Actividad', 'Nota', 'Máx', 'Fecha', 'Comentario'],
+  rows: items.map<List<String>>((it) {
+    final itemName = (it['itemName'] ?? '-').toString().replaceAll('_', ' ');
+    final raw = it['graderaw'];
+    final graderaw = raw == null ? '-' : raw.toString();
+    final max = (it['max']?.toString() ?? '-');
+    final fechaVal = it['gradedategraded'];
+    final fecha = (fechaVal == null || fechaVal.toString().trim().isEmpty)
+        ? '-'
+        : fechaVal.toString();
+
+    final comentarioPlano = _stripHtml((it['comentario'] ?? '').toString());
+
+    // 🔹 Ahora el comentario será una columna separada
+    return [itemName, graderaw, max, fecha, comentarioPlano];
+  }).toList(),
+),
+
         ],
       ),
     );
@@ -876,10 +870,11 @@ class _TableDark extends StatelessWidget {
       ),
       child: Table(
         columnWidths: const {
-          0: FlexColumnWidth(2.6),
-          1: FlexColumnWidth(1),
-          2: FlexColumnWidth(1),
-          3: FlexColumnWidth(1.2),
+          0: FlexColumnWidth(2.2), // Actividad
+          1: FlexColumnWidth(0.8), // Nota
+          2: FlexColumnWidth(0.8), // Máx
+          3: FlexColumnWidth(1.2), // Fecha
+          4: FlexColumnWidth(2.0), // Comentario
         },
         defaultVerticalAlignment: TableCellVerticalAlignment.middle,
         border: TableBorder(
@@ -891,6 +886,7 @@ class _TableDark extends StatelessWidget {
           bottom: BorderSide(color: borderColor),
         ),
         children: [
+          // ===== Encabezados =====
           TableRow(
             decoration: const BoxDecoration(color: DS.card),
             children: headers
@@ -900,52 +896,32 @@ class _TableDark extends StatelessWidget {
                     child: Text(
                       h,
                       style: headerStyle,
-                      textAlign: h == 'Actividad'
-                          ? TextAlign.left
-                          : TextAlign.right,
+                      textAlign:
+                          (h == 'Actividad' || h == 'Comentario')
+                              ? TextAlign.left
+                              : TextAlign.right,
                     ),
                   ),
                 )
                 .toList(),
           ),
+          // ===== Filas =====
           ...rows.map(
             (cols) => TableRow(
-              children: [
-                Padding(
+              children: List.generate(cols.length, (i) {
+                return Padding(
                   padding: const EdgeInsets.all(8),
                   child: Text(
-                    cols[0].replaceAll('_', ' '),
+                    cols[i].replaceAll('_', ' '),
                     style: cellStyle,
                     softWrap: true,
                     overflow: TextOverflow.visible,
                     maxLines: null,
+                    textAlign:
+                        (i == 0 || i == 4) ? TextAlign.left : TextAlign.right,
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    cols[1],
-                    style: cellStyle,
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    cols[2],
-                    style: cellStyle,
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    cols[3],
-                    style: cellStyle,
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-              ],
+                );
+              }),
             ),
           ),
         ],
