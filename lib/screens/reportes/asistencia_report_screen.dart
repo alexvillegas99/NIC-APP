@@ -5,6 +5,18 @@ import 'package:nic_pre_u/services/asistencia_service.dart';
 import 'package:nic_pre_u/shared/utils/file_downloader.dart';
 import 'package:nic_pre_u/shared/ui/design_system.dart';
 
+/// ===== Item combinado para pintar filas (asistencia + faltas) =====
+class DiaItem {
+  final String fechaISO;       // YYYY-MM-DD
+  final List<String> horas;    // HH:mm:ss...
+  final bool asistio;          // true = asistió, false = faltó
+  const DiaItem({
+    required this.fechaISO,
+    required this.horas,
+    required this.asistio,
+  });
+}
+
 class AsistenciaReportScreen extends StatefulWidget {
   const AsistenciaReportScreen({super.key});
   @override
@@ -33,22 +45,36 @@ class _AsistenciaReportScreenState extends State<AsistenciaReportScreen> {
       _future = _svc.getPorCedula(cedula);
     });
   }
+
+  // ===== Helpers de formato =====
+
+  /// Devuelve HH:mm a partir de List<String> (toma la primera) o String HH:mm:ss
   String _fmtHoras(dynamic raw) {
-  if (raw == null) return '—';
-  // Si viene como lista ['08:08:36']
-  if (raw is List && raw.isNotEmpty) raw = raw.first;
-  // Si es string con segundos
-  if (raw is String && raw.contains(':')) {
-    final parts = raw.split(':');
-    if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+    if (raw == null) return '—';
+    if (raw is List && raw.isNotEmpty) raw = raw.first;
+    if (raw is String && raw.contains(':')) {
+      final parts = raw.split(':');
+      if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+    }
+    return raw.toString();
   }
-  return raw.toString();
-}
-String _fmtDate(String? iso) {
-  if (iso == null || iso.trim().isEmpty) return '—';
+
+  /// Fecha simple dd/MM/yyyy
+  String _fmtDate(String? iso) {
+    if (iso == null || iso.trim().isEmpty) return '—';
+    final d = DateTime.tryParse(iso);
+    return d != null ? DateFormat('dd/MM/yyyy', 'es').format(d) : iso;
+  }
+
+  /// Fecha “viernes 4 de julio 2025”
+  String _fmtFriendlyDate(String? iso) {
+   if (iso == null || iso.trim().isEmpty) return '—';
   final d = DateTime.tryParse(iso);
-  return d != null ? DateFormat('dd/MM/yyyy').format(d) : iso;
-}
+  if (d == null) return iso;
+  final txt = DateFormat("d 'de' MMMM 'de' y", 'es').format(d);
+  return txt.toLowerCase();
+  }
+
   Future<void> _refresh() async => _load();
 
   Future<T> _runWithLoader<T>({
@@ -88,6 +114,28 @@ String _fmtDate(String? iso) {
     } finally {
       if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
     }
+  }
+
+  // Chip “Asistió / Faltó”
+  Widget _estadoChip(bool asistio) {
+    final txt = asistio ? 'Asistió' : 'Faltó';
+    final color = asistio ? const Color(0xFF22C55E) : const Color(0xFFEF4444);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(.15),
+        border: Border.all(color: color.withOpacity(.5)),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        txt,
+        style: DS.p.copyWith(
+          fontWeight: FontWeight.w700,
+          color: color,
+          fontSize: 12,
+        ),
+      ),
+    );
   }
 
   @override
@@ -136,6 +184,50 @@ String _fmtDate(String? iso) {
 
               final data = s.data!;
 
+              // ================== Construcción de items combinados ==================
+              final Map<String, AsistenciaRegistro> regPorFecha = {
+                for (final r in data.registros) r.fecha: r
+              };
+
+              final Set<String> faltasFechas = {
+                ...(data.faltas?.diasFaltados ?? const <String>[])
+              };
+
+              // 1) Items de asistencia
+              final List<DiaItem> items = [
+                for (final r in data.registros)
+                  DiaItem(
+                    fechaISO: r.fecha,
+                    horas: r.horas,
+                    asistio: (r.horas.isNotEmpty) || (r.registrosEnElDia > 0),
+                  ),
+              ];
+
+              // 2) Items de faltas que no estén ya en registros
+            for (final f in faltasFechas) {
+  if (!regPorFecha.containsKey(f)) {
+    items.add(
+      DiaItem( // ← sin `const`
+        fechaISO: f,
+        horas: const <String>[], // esta sí puede ser const
+        asistio: false,
+      ),
+    );
+  }
+}
+
+
+              // 3) Ordenar desc por fecha
+              items.sort((DiaItem a, DiaItem b) {
+                final DateTime? da = DateTime.tryParse(a.fechaISO);
+                final DateTime? db = DateTime.tryParse(b.fechaISO);
+                if (da == null && db == null) return 0;
+                if (da == null) return 1;
+                if (db == null) return -1;
+                return db.compareTo(da); // más reciente primero
+              });
+
+              // ================== UI ==================
               return ListView(
                 padding: EdgeInsets.zero,
                 children: [
@@ -143,7 +235,7 @@ String _fmtDate(String? iso) {
                     nombre: data.asistenteNombre ?? '-',
                     cedula: data.cedula,
                     curso: data.curso.nombre ?? '-',
-                    porcentaje:(data.resumen.porcentajeAsistencia ?? 0).toDouble(),
+                    porcentaje: (data.resumen.porcentajeAsistencia).toDouble(),
                     estado: data.curso.estado ?? '—',
                     cargando: false,
                     onActualizar: _refresh,
@@ -186,6 +278,11 @@ String _fmtDate(String? iso) {
                             'Porcentaje: ${data.resumen.porcentajeAsistencia.toStringAsFixed(1)}%',
                             style: DS.p,
                           ),
+                          if (data.resumen.ultimaFecha != null)
+                            Text(
+                              'Último registro: ${_fmtFriendlyDate(data.resumen.ultimaFecha)}',
+                              style: DS.pDim,
+                            ),
                         ],
                       ),
                     ),
@@ -193,32 +290,86 @@ String _fmtDate(String? iso) {
 
                   const SizedBox(height: 16),
 
-                  // === Detalle de registros ===
+                  // === Detalle por día (Fecha | Hora(s) | Estado) ===
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('Detalle de asistencias', style: DS.h2),
+                    child: Text('Detalle por día', style: DS.h2),
                   ),
                   const SizedBox(height: 8),
-                  ...data.registros.map(
-                    
-                    (r) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      child: Container(
-                        decoration: DS.cardDeco(),
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _fmtDate(r.fecha),
-                              style: DS.p.copyWith(fontWeight: FontWeight.w600),
+
+                  // Encabezado tipo tabla
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      decoration: DS.cardDeco(),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Text('Fecha', style: DS.p.copyWith(fontWeight: FontWeight.w800)),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text('Hora(s)', style: DS.p.copyWith(fontWeight: FontWeight.w800)),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              'Estado',
+                              style: DS.p.copyWith(fontWeight: FontWeight.w800),
+                              textAlign: TextAlign.right,
                             ),
-                            Text('${_fmtHoras(r.horas)} h', style: DS.pDim), // ← aquí  
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
+                  const SizedBox(height: 6),
+
+                  ...items.map((DiaItem it) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        child: Container(
+                          decoration: DS.cardDeco(),
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              // Columna 1: Fecha (friendly)
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  _fmtFriendlyDate(it.fechaISO),
+                                  style: DS.p.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              // Columna 2: Hora(s) con sufijo "m"
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  it.asistio
+                                      ? (it.horas.isEmpty
+                                          ? '—'
+                                          : (it.horas.length == 1
+                                              ? '${_fmtHoras(it.horas)} m'
+                                              : '${_fmtHoras(it.horas.first)} m (+${it.horas.length - 1})'))
+                                      : '—',
+                                  style: DS.pDim,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              // Columna 3: Estado (derecha)
+                              Expanded(
+                                flex: 2,
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: _estadoChip(it.asistio),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
+
                   const SizedBox(height: 24),
                 ],
               );
@@ -257,7 +408,7 @@ class _HeaderAsistencia extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nowStr = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
+    final nowStr = DateFormat('dd/MM/yyyy HH:mm', 'es').format(DateTime.now());
 
     return Container(
       decoration: const BoxDecoration(

@@ -536,9 +536,9 @@ class _EtapaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final estado = estadoLabel(data['estado']?.toString());
     final fecha  = data['fechaISO'] == null ? '—' : fmtDate(data['fechaISO']);
-    final comentario = (data['comentario']?.toString().trim().isEmpty ?? true)
+/*     final comentario = (data['comentario']?.toString().trim().isEmpty ?? true)
         ? '—'
-        : data['comentario'].toString();
+        : data['comentario'].toString(); */
 
     final logs = (data['logs'] is List) ? (data['logs'] as List) : const [];
 
@@ -578,7 +578,7 @@ class _EtapaCard extends StatelessWidget {
             runSpacing: 6,
             children: [
               _miniInfo('Fecha', fecha),
-              _miniInfo('Comentario', comentario),
+           //   _miniInfo('Comentario', comentario),
             ],
           ),
 

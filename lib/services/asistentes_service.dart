@@ -54,7 +54,7 @@ class AsistentesService {
   /// GET /moodle/courses/with-gradesv2?username=<cedula>
   /// Devuelve siempre List<dynamic> (vacía si 400 "Usuario no encontrado")
   Future<List<dynamic>> obtenerNotasV2(String username) async {
-    final uri = Uri.parse('$baseUrl/moodle/courses/with-gradesv2?username=$username');
+    final uri = Uri.parse('$baseUrl/moodle/courses/with-gradesv3/app?username=$username');
     final res = await http.get(uri, headers: await _authHeaders());
 
     // Manejo de 400 "Usuario no encontrado" como lista vacía

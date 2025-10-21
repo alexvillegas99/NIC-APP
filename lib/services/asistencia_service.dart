@@ -40,12 +40,18 @@ class AsistenciaResumen {
   final int porcentajeAsistencia;
   final int totalAsistenciasAcumuladas;
 
+  // NUEVOS
+  final int totalDiasEsperados;
+  final int totalFaltas;
+
   AsistenciaResumen({
     required this.totalRegistros,
     required this.ultimaFecha,
     required this.diasConAsistencia,
     required this.porcentajeAsistencia,
     required this.totalAsistenciasAcumuladas,
+    required this.totalDiasEsperados,
+    required this.totalFaltas,
   });
 
   factory AsistenciaResumen.fromJson(Map<String, dynamic> j) => AsistenciaResumen(
@@ -55,16 +61,37 @@ class AsistenciaResumen {
         porcentajeAsistencia: (j['porcentajeAsistencia'] as num? ?? 0).toInt(),
         totalAsistenciasAcumuladas:
             (j['totalAsistenciasAcumuladas'] as num? ?? 0).toInt(),
+        totalDiasEsperados: (j['totalDiasEsperados'] as num? ?? 0).toInt(),
+        totalFaltas: (j['totalFaltas'] as num? ?? 0).toInt(),
+      );
+}
+class AsistenciaFaltas {
+  final String? referencia;
+  final List<String> diasFaltados;
+
+  AsistenciaFaltas({
+    required this.referencia,
+    required this.diasFaltados,
+  });
+
+  factory AsistenciaFaltas.fromJson(Map<String, dynamic> j) => AsistenciaFaltas(
+        referencia: j['referencia']?.toString(),
+        diasFaltados: ((j['diasFaltados'] as List?) ?? const [])
+            .map((e) => e?.toString() ?? '')
+            .where((s) => s.isNotEmpty)
+            .toList(),
       );
 }
 
 class AsistenciaRegistro {
   final String fecha;            // YYYY-MM-DD
-  final List<String> horas;      // ['08:00:00', '12:00:00', ...]
+  final List<String> horas;      // ['08:00:00', ...]
+  final int registrosEnElDia;    // NUEVO
 
   AsistenciaRegistro({
     required this.fecha,
     required this.horas,
+    required this.registrosEnElDia,
   });
 
   factory AsistenciaRegistro.fromJson(Map<String, dynamic> j) => AsistenciaRegistro(
@@ -73,6 +100,7 @@ class AsistenciaRegistro {
             .map((e) => e?.toString() ?? '')
             .where((s) => s.isNotEmpty)
             .toList(),
+        registrosEnElDia: (j['registrosEnElDia'] as num? ?? 0).toInt(),
       );
 }
 
@@ -84,6 +112,9 @@ class AsistenciaReporte {
   final AsistenciaResumen resumen;
   final List<AsistenciaRegistro> registros;
 
+  // NUEVO
+  final AsistenciaFaltas? faltas;
+
   AsistenciaReporte({
     required this.cedula,
     this.asistenteId,
@@ -91,6 +122,7 @@ class AsistenciaReporte {
     required this.curso,
     required this.resumen,
     required this.registros,
+    this.faltas,
   });
 
   factory AsistenciaReporte.fromJson(Map<String, dynamic> j) => AsistenciaReporte(
@@ -102,6 +134,9 @@ class AsistenciaReporte {
         registros: ((j['registros'] as List?) ?? const [])
             .map((e) => AsistenciaRegistro.fromJson((e ?? {}) as Map<String, dynamic>))
             .toList(),
+        faltas: j['faltas'] == null
+            ? null
+            : AsistenciaFaltas.fromJson((j['faltas'] ?? {}) as Map<String, dynamic>),
       );
 }
 
