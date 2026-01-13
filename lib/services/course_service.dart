@@ -31,6 +31,31 @@ class CourseService {
     return [];
   }
 
+    /// 🔹 Obtener cursos activos (para escaneo de asistencia)
+Future<List<Map<String, dynamic>>> getActiveCourses() async {
+  final String baseUrl = dotenv.env['API_URL'] ?? '';
+  if (baseUrl.isEmpty) {
+    throw Exception('API_URL no configurada');
+  }
+
+  final uri = Uri.parse(
+    baseUrl.endsWith('/')
+        ? '${baseUrl}cursos?estado=active'
+        : '$baseUrl/cursos?estado=active',
+  );
+
+  final res = await http.get(uri).timeout(const Duration(seconds: 10));
+
+  if (res.statusCode != 200) {
+    throw Exception('Error ${res.statusCode} al obtener cursos activos');
+  }
+
+  final body = jsonDecode(res.body);
+  if (body is! List) return [];
+
+  return List<Map<String, dynamic>>.from(body);
+}
+
   // lib/features/courses/data/course_service.dart
   Future<List<dynamic>> fetchCoursesWithGradesByUsername() async {
     final userData = await _authService.getUser();
@@ -154,4 +179,7 @@ class CourseService {
       onProgress: onProgress,
     );
   }
+
+
+
 }

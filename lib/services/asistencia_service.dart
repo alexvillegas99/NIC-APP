@@ -23,14 +23,14 @@ class AsistenciaCurso {
   });
 
   factory AsistenciaCurso.fromJson(Map<String, dynamic> j) => AsistenciaCurso(
-        id: j['id']?.toString(),
-        nombre: j['nombre']?.toString(),
-        estado: j['estado']?.toString(),
-        diasActuales: (j['diasActuales'] as num?)?.toInt(),
-        diasCurso: (j['diasCurso'] as num?)?.toInt(),
-        updatedAt: j['updatedAt']?.toString(),
-        imagen: j['imagen']?.toString(),
-      );
+    id: j['id']?.toString(),
+    nombre: j['nombre']?.toString(),
+    estado: j['estado']?.toString(),
+    diasActuales: (j['diasActuales'] as num?)?.toInt(),
+    diasCurso: (j['diasCurso'] as num?)?.toInt(),
+    updatedAt: j['updatedAt']?.toString(),
+    imagen: j['imagen']?.toString(),
+  );
 }
 
 class AsistenciaResumen {
@@ -54,7 +54,8 @@ class AsistenciaResumen {
     required this.totalFaltas,
   });
 
-  factory AsistenciaResumen.fromJson(Map<String, dynamic> j) => AsistenciaResumen(
+  factory AsistenciaResumen.fromJson(Map<String, dynamic> j) =>
+      AsistenciaResumen(
         totalRegistros: (j['totalRegistros'] as num? ?? 0).toInt(),
         ultimaFecha: j['ultimaFecha']?.toString(),
         diasConAsistencia: (j['diasConAsistencia'] as num? ?? 0).toInt(),
@@ -65,28 +66,26 @@ class AsistenciaResumen {
         totalFaltas: (j['totalFaltas'] as num? ?? 0).toInt(),
       );
 }
+
 class AsistenciaFaltas {
   final String? referencia;
   final List<String> diasFaltados;
 
-  AsistenciaFaltas({
-    required this.referencia,
-    required this.diasFaltados,
-  });
+  AsistenciaFaltas({required this.referencia, required this.diasFaltados});
 
   factory AsistenciaFaltas.fromJson(Map<String, dynamic> j) => AsistenciaFaltas(
-        referencia: j['referencia']?.toString(),
-        diasFaltados: ((j['diasFaltados'] as List?) ?? const [])
-            .map((e) => e?.toString() ?? '')
-            .where((s) => s.isNotEmpty)
-            .toList(),
-      );
+    referencia: j['referencia']?.toString(),
+    diasFaltados: ((j['diasFaltados'] as List?) ?? const [])
+        .map((e) => e?.toString() ?? '')
+        .where((s) => s.isNotEmpty)
+        .toList(),
+  );
 }
 
 class AsistenciaRegistro {
-  final String fecha;            // YYYY-MM-DD
-  final List<String> horas;      // ['08:00:00', ...]
-  final int registrosEnElDia;    // NUEVO
+  final String fecha; // YYYY-MM-DD
+  final List<String> horas; // ['08:00:00', ...]
+  final int registrosEnElDia; // NUEVO
 
   AsistenciaRegistro({
     required this.fecha,
@@ -94,7 +93,8 @@ class AsistenciaRegistro {
     required this.registrosEnElDia,
   });
 
-  factory AsistenciaRegistro.fromJson(Map<String, dynamic> j) => AsistenciaRegistro(
+  factory AsistenciaRegistro.fromJson(Map<String, dynamic> j) =>
+      AsistenciaRegistro(
         fecha: j['fecha']?.toString() ?? '',
         horas: ((j['horas'] as List?) ?? const [])
             .map((e) => e?.toString() ?? '')
@@ -125,38 +125,59 @@ class AsistenciaReporte {
     this.faltas,
   });
 
-  factory AsistenciaReporte.fromJson(Map<String, dynamic> j) => AsistenciaReporte(
-        cedula: j['cedula']?.toString() ?? '',
-        asistenteId: j['asistente']?['id']?.toString(),
-        asistenteNombre: j['asistente']?['nombre']?.toString(),
-        curso: AsistenciaCurso.fromJson((j['curso'] ?? {}) as Map<String, dynamic>),
-        resumen: AsistenciaResumen.fromJson((j['resumen'] ?? {}) as Map<String, dynamic>),
-        registros: ((j['registros'] as List?) ?? const [])
-            .map((e) => AsistenciaRegistro.fromJson((e ?? {}) as Map<String, dynamic>))
-            .toList(),
-        faltas: j['faltas'] == null
-            ? null
-            : AsistenciaFaltas.fromJson((j['faltas'] ?? {}) as Map<String, dynamic>),
-      );
+  factory AsistenciaReporte.fromJson(
+    Map<String, dynamic> j,
+  ) => AsistenciaReporte(
+    cedula: j['cedula']?.toString() ?? '',
+    asistenteId: j['asistente']?['id']?.toString(),
+    asistenteNombre: j['asistente']?['nombre']?.toString(),
+    curso: AsistenciaCurso.fromJson((j['curso'] ?? {}) as Map<String, dynamic>),
+    resumen: AsistenciaResumen.fromJson(
+      (j['resumen'] ?? {}) as Map<String, dynamic>,
+    ),
+    registros: ((j['registros'] as List?) ?? const [])
+        .map(
+          (e) => AsistenciaRegistro.fromJson((e ?? {}) as Map<String, dynamic>),
+        )
+        .toList(),
+    faltas: j['faltas'] == null
+        ? null
+        : AsistenciaFaltas.fromJson(
+            (j['faltas'] ?? {}) as Map<String, dynamic>,
+          ),
+  );
 }
 
 class AsistenciaService {
   /// Debe ser algo como http://localhost:4000/api (sin slash final adicional)
   final String base = dotenv.env['API_URL'] ?? '';
 
-  Future<AsistenciaReporte> getPorCedula(String cedula) async {
-    final uri = Uri.parse('$base/asistencias/por-cedula?cedula=$cedula');
+  Future<AsistenciaReporte> getPorCedula({
+    required String cedula,
+    required String cursoId,
+  }) async {
+    final uri = Uri.parse(
+      '$base/asistencias/por-cedula?cedula=$cedula&cursoId=$cursoId',
+    );
+
     final res = await http.get(uri);
+
     if (res.statusCode != 200) {
       throw Exception('Error ${res.statusCode}: ${res.body}');
     }
+
     final data = json.decode(res.body) as Map<String, dynamic>;
     return AsistenciaReporte.fromJson(data);
   }
 
   /// Si el PDF lo genera el backend (recomendado)
-  Uri buildPdfUri(String cedula) =>
-      Uri.parse('$base/asistencias/por-cedula/pdf?cedula=$cedula');
-
+Uri buildPdfUri(
+  String cedula, {
+  required String cursoId,
+}) {
+  return Uri.parse(
+    '$base/asistencias/por-cedula/pdf?cedula=$cedula&cursoId=$cursoId',
+  );
+}
 
 }

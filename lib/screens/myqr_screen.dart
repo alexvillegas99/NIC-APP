@@ -5,6 +5,7 @@ import 'package:nic_pre_u/services/auth_service.dart';
 
 class MyQRScreen extends StatefulWidget {
   const MyQRScreen({super.key});
+
   @override
   State<MyQRScreen> createState() => _MyQRScreenState();
 }
@@ -12,13 +13,14 @@ class MyQRScreen extends StatefulWidget {
 class _MyQRScreenState extends State<MyQRScreen> {
   final _auth = AuthService();
 
-  String? _qrData;          // "{cedula},{nombre},{curso},{createdAtEcuador}"
-  String _nombre = 'Estudiante';
+  // Estados
+  String? _qrData;
+  String _nombre = '';
   String _cedula = '';
   bool _loading = true;
   String? _error;
 
-  // Paleta del mock
+  // Paleta
   static const kBg = Color(0xFF0F1220);
   static const kPurple = Color(0xFF8A5CF6);
   static const kText = Color(0xFFE8EAF6);
@@ -37,37 +39,31 @@ class _MyQRScreenState extends State<MyQRScreen> {
     });
 
     try {
-      final user = await _auth.getUser(); // Map<String, dynamic>?
-      if (user == null) {
-        setState(() {
-          _error = 'No se pudo obtener el usuario.';
-          _loading = false;
-        });
-        return;
+      final res = await _auth.getUser();
+      if (res == null) {
+        throw Exception('Usuario nulo');
       }
 
-      _cedula = (user['cedula'] ?? user['dni'] ?? '').toString().trim();
-      _nombre = (user['nombre'] ?? user['name'] ?? 'Estudiante').toString().trim();
-      final curso = (user['curso'] ?? user['grado'] ?? '').toString().trim();
+      final user = res['user'] ?? res;
 
-      final createdAtEcuador = (user['createdAtEcuador']?.toString().isNotEmpty ?? false)
-          ? user['createdAtEcuador'].toString()
-          : _toEcuadorString(user['createdAt']);
+      _cedula = user['cedula']?.toString() ?? '';
+      _nombre = user['nombre']?.toString() ?? '';
 
-      final data = '$_cedula,$_nombre,$curso,$createdAtEcuador';
+      _generarQR(user);
 
-      if (!mounted) return;
-      setState(() {
-        _qrData = data;
-        _loading = false;
-      });
+      setState(() => _loading = false);
     } catch (e) {
-      if (!mounted) return;
       setState(() {
-        _error = 'No se pudo preparar el código QR.';
+        _error = 'Error al generar el QR';
         _loading = false;
       });
     }
+  }
+
+  void _generarQR(Map<String, dynamic> user) {
+    final createdAtEcuador =
+        user['createdAtEcuador'] ?? _toEcuadorString(user['createdAt']);
+    _qrData = '$_cedula,$_nombre,$createdAtEcuador';
   }
 
   String _toEcuadorString(dynamic createdAt) {
@@ -78,7 +74,6 @@ class _MyQRScreenState extends State<MyQRScreen> {
     return DateFormat('yyyy-MM-dd HH:mm:ss').format(ec);
   }
 
-  // “Código: 12-14-15-16” desde la cédula
   String get _prettyCode {
     final s = _cedula.replaceAll(RegExp(r'\D'), '');
     if (s.isEmpty) return '--';
@@ -92,7 +87,7 @@ class _MyQRScreenState extends State<MyQRScreen> {
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-    final qrSize = (w * 0.64).clamp(220, 320); // tamaño aproximado del mock
+    final qrSize = (w * 0.64).clamp(220, 320).toDouble();
 
     return Scaffold(
       backgroundColor: kBg,
@@ -103,146 +98,81 @@ class _MyQRScreenState extends State<MyQRScreen> {
           icon: const Icon(Icons.arrow_back, color: kText),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Row(
-          children: const [
-            /* Text('', style: TextStyle(color: kText, fontWeight: FontWeight.w900)),
-            SizedBox(width: 8), */
-            Text('NIC',
-                style: TextStyle(color: kPurple, fontWeight: FontWeight.w700)),
-          ],
+        title: const Text(
+          'NIC',
+          style: TextStyle(color: kPurple, fontWeight: FontWeight.w800),
         ),
-        centerTitle: false,
       ),
-body: SafeArea(
-  child: LayoutBuilder(
-    builder: (context, constraints) {
-      final w = MediaQuery.of(context).size.width;
-      final qrSize = (w * 0.64).clamp(220, 320).toDouble();
-
-      return SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              // 👇 Centrado vertical
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Título y subtítulo
-                const Text(
-                  'Tú código QR',
-                  style: TextStyle(
-                    color: Color(0xFF8A5CF6),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Pídele al profesor que escanee tu QR para poder tomar la asistencia.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF9AA3B2), fontSize: 14),
-                ),
-                const SizedBox(height: 24),
-
-                // Tarjeta del QR (centrado)
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.35),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                        border: Border.all(color: Color(0xFF8A5CF6), width: 6),
-                      ),
-                      child: _loading
-                          ? const SizedBox(
-                              height: 240, width: 240,
-                              child: Center(child: CircularProgressIndicator()),
-                            )
-                          : (_error != null || _qrData == null)
-                              ? SizedBox(
-                                  height: 240, width: 240,
-                                  child: Center(
-                                    child: Text(
-                                      _error ?? 'Sin datos',
-                                      style: const TextStyle(color: Colors.redAccent),
-                                    ),
-                                  ),
-                                )
-                              : QrImageView(
-                                  data: _qrData!,
-                                  version: QrVersions.auto,
-                                  size: qrSize,
-                                  backgroundColor: Colors.white,
-                                  eyeStyle: const QrEyeStyle(
-                                    eyeShape: QrEyeShape.square,
-                                    color: Colors.black,
-                                  ),
-                                  dataModuleStyle: const QrDataModuleStyle(
-                                    dataModuleShape: QrDataModuleShape.square,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                    ),
-                    Positioned(
-                      right: -6,
-                      bottom: -10,
-                      child: CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Color(0xFF8A5CF6),
-                        child: Text(
-                          (_nombre.isNotEmpty ? _nombre[0] : 'A').toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 22),
-
-                // Nombre y código
-                Text(
-                  _nombre.isEmpty ? 'Nombre Estudiante' : _nombre,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFFE8EAF6),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Código: ${_prettyCode}',
-                  style: const TextStyle(color: Color(0xFF9AA3B2), fontSize: 14),
-                ),
-
-                const SizedBox(height: 28), // respiro inferior
-              ],
+   body: SafeArea(
+  child: Center( // <- Asegura centrado horizontal
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Tu código QR',
+            style: TextStyle(
+              color: kPurple,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
             ),
+            textAlign: TextAlign.center,
           ),
-        ),
-      );
-    },
+          const SizedBox(height: 20),
+
+          // QR centrado
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: kPurple, width: 6),
+            ),
+            child: _loading
+                ? SizedBox(
+                    height: qrSize,
+                    width: qrSize,
+                    child: const Center(child: CircularProgressIndicator()),
+                  )
+                : QrImageView(
+                    data: _qrData ?? '',
+                    size: qrSize,
+                    backgroundColor: Colors.white,
+                  ),
+          ),
+
+          const SizedBox(height: 20),
+
+          Text(
+            _nombre,
+            style: const TextStyle(
+              color: kText,
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+            ),
+            textAlign: TextAlign.center, // <- Centra texto
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Código: $_prettyCode',
+            style: const TextStyle(color: kSub),
+            textAlign: TextAlign.center, // <- Centra texto
+          ),
+
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.red),
+              textAlign: TextAlign.center, // <- Centra texto
+            ),
+          ],
+        ],
+      ),
+    ),
   ),
 ),
-
-
-   );
+ );
   }
 }

@@ -7,9 +7,10 @@ import 'package:nic_pre_u/shared/ui/design_system.dart';
 
 /// ===== Item combinado para pintar filas (asistencia + faltas) =====
 class DiaItem {
-  final String fechaISO;       // YYYY-MM-DD
-  final List<String> horas;    // HH:mm:ss...
-  final bool asistio;          // true = asistió, false = faltó
+  final String fechaISO;
+  final List<String> horas;
+  final bool asistio;
+
   const DiaItem({
     required this.fechaISO,
     required this.horas,
@@ -19,6 +20,7 @@ class DiaItem {
 
 class AsistenciaReportScreen extends StatefulWidget {
   const AsistenciaReportScreen({super.key});
+
   @override
   State<AsistenciaReportScreen> createState() => _AsistenciaReportScreenState();
 }
@@ -26,116 +28,146 @@ class AsistenciaReportScreen extends StatefulWidget {
 class _AsistenciaReportScreenState extends State<AsistenciaReportScreen> {
   final _auth = AuthService();
   final _svc = AsistenciaService();
+
   Future<AsistenciaReporte>? _future;
+
+  List<Map<String, dynamic>> _cursos = [];
+  String? _cursoSeleccionadoId;
+  String _cedula = '';
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _loadInicial();
   }
 
-  Future<void> _load() async {
-    final user = await _auth.getUser();
-    final cedula = (user?['cedula'] ?? '').toString();
-    if (cedula.isEmpty) {
-      setState(() => _future = Future.error('No se encontró cédula en el usuario'));
+  /// ===== Carga inicial =====
+  Future<void> _loadInicial() async {
+    try {
+      final user = await _auth.getUser();
+
+      _cedula = (user?['cedula'] ?? '').toString();
+      _cursos = List<Map<String, dynamic>>.from(user?['cursos'] ?? []);
+
+      if (_cedula.isEmpty) {
+        setState(
+          () => _future = Future.error('No se encontró cédula en el usuario'),
+        );
+        return;
+      }
+
+      if (_cursos.isEmpty) {
+        setState(() => _future = Future.error('No tienes cursos asignados'));
+        return;
+      }
+
+      // ✅ Al entrar: selecciona el PRIMER curso del array (solo una vez)
+      _cursoSeleccionadoId ??= _cursos.first['_id']?.toString();
+
+      _consultar();
+    } catch (e) {
+      setState(
+        () => _future = Future.error('Error cargando usuario/cursos: $e'),
+      );
+    }
+  }
+
+  /// ===== Consulta asistencia =====
+  void _consultar() {
+    if (_cedula.isEmpty) {
+      setState(() => _future = Future.error('No se encontró cédula'));
       return;
     }
+
+    final cursoId = _cursoSeleccionadoId?.toString();
+    if (cursoId == null || cursoId.isEmpty) {
+      setState(
+        () => _future = Future.error('No se encontró curso seleccionado'),
+      );
+      return;
+    }
+
     setState(() {
-      _future = _svc.getPorCedula(cedula);
+      _future = _svc.getPorCedula(cedula: _cedula, cursoId: cursoId);
     });
   }
 
-  // ===== Helpers de formato =====
+  Future<void> _refresh() async => _consultar();
 
-  /// Devuelve HH:mm a partir de List<String> (toma la primera) o String HH:mm:ss
+  // ===== Helpers =====
+
   String _fmtHoras(dynamic raw) {
     if (raw == null) return '—';
     if (raw is List && raw.isNotEmpty) raw = raw.first;
     if (raw is String && raw.contains(':')) {
-      final parts = raw.split(':');
-      if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+      final p = raw.split(':');
+      if (p.length >= 2) return '${p[0]}:${p[1]}';
     }
     return raw.toString();
   }
 
-  /// Fecha simple dd/MM/yyyy
-  String _fmtDate(String? iso) {
+  String _fmtFriendlyDate(String? iso) {
     if (iso == null || iso.trim().isEmpty) return '—';
     final d = DateTime.tryParse(iso);
-    return d != null ? DateFormat('dd/MM/yyyy', 'es').format(d) : iso;
+    if (d == null) return iso;
+    return DateFormat("d 'de' MMMM 'de' y", 'es').format(d).toLowerCase();
   }
 
-  /// Fecha “viernes 4 de julio 2025”
-  String _fmtFriendlyDate(String? iso) {
-   if (iso == null || iso.trim().isEmpty) return '—';
-  final d = DateTime.tryParse(iso);
-  if (d == null) return iso;
-  final txt = DateFormat("d 'de' MMMM 'de' y", 'es').format(d);
-  return txt.toLowerCase();
-  }
-
-  Future<void> _refresh() async => _load();
-
-  Future<T> _runWithLoader<T>({
-    required String message,
-    required Future<T> Function() task,
-  }) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => WillPopScope(
-        onWillPop: () async => false,
-        child: AlertDialog(
-          backgroundColor: DS.card,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          content: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                height: 22,
-                width: 22,
-                child: CircularProgressIndicator(strokeWidth: 2.8, color: DS.primary),
-              ),
-              const SizedBox(width: 14),
-              Flexible(
-                child: Text(message, style: DS.p.copyWith(color: DS.text)),
-              ),
-            ],
-          ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
-    );
-
-    try {
-      final result = await task();
-      return result;
-    } finally {
-      if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
+  Map<String, dynamic>? get _cursoSeleccionado {
+    final id = _cursoSeleccionadoId?.toString();
+    if (id == null || id.isEmpty) return null;
+    for (final c in _cursos) {
+      if ((c['_id']?.toString() ?? '') == id) return c;
     }
+    return null;
   }
 
-  // Chip “Asistió / Faltó”
+  String get _cursoNombreSeleccionado =>
+      _cursoSeleccionado?['nombre']?.toString() ?? '—';
+
   Widget _estadoChip(bool asistio) {
-    final txt = asistio ? 'Asistió' : 'Faltó';
     final color = asistio ? const Color(0xFF22C55E) : const Color(0xFFEF4444);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withOpacity(.15),
-        border: Border.all(color: color.withOpacity(.5)),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(.5)),
       ),
       child: Text(
-        txt,
+        asistio ? 'Asistió' : 'Faltó',
         style: DS.p.copyWith(
-          fontWeight: FontWeight.w700,
           color: color,
+          fontWeight: FontWeight.w700,
           fontSize: 12,
         ),
       ),
     );
+  }
+
+  /// ✅ Construye lista final (asistencias + faltas) SIN duplicar lógica
+  List<DiaItem> _buildItems(AsistenciaReporte data) {
+    final registros = data.registros ?? <AsistenciaRegistro>[];
+    final faltas = (data.faltas?.diasFaltados ?? const <String>[]).toSet();
+
+    final regPorFecha = <String, AsistenciaRegistro>{
+      for (final r in registros) r.fecha: r,
+    };
+
+    final items = <DiaItem>[
+      for (final r in registros)
+        DiaItem(
+          fechaISO: r.fecha,
+          horas: r.horas,
+          asistio: r.horas.isNotEmpty || r.registrosEnElDia > 0,
+        ),
+      for (final f in faltas)
+        if (!regPorFecha.containsKey(f))
+          DiaItem(fechaISO: f, horas: const <String>[], asistio: false),
+    ];
+
+    items.sort((a, b) => b.fechaISO.compareTo(a.fechaISO));
+    return items;
   }
 
   @override
@@ -156,10 +188,7 @@ class _AsistenciaReportScreenState extends State<AsistenciaReportScreen> {
         ),
       ),
       child: Scaffold(
-        appBar: AppBar(
-          leading: const BackButton(),
-          title: Text('Reporte de asistencia', style: DS.h2),
-        ),
+        appBar: AppBar(title: Text('Reporte de asistencia', style: DS.h2)),
         body: RefreshIndicator(
           color: DS.primary,
           onRefresh: _refresh,
@@ -167,12 +196,21 @@ class _AsistenciaReportScreenState extends State<AsistenciaReportScreen> {
             future: _future,
             builder: (context, s) {
               if (s.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(color: DS.primary));
+                return const Center(
+                  child: CircularProgressIndicator(color: DS.primary),
+                );
               }
 
               if (s.hasError) {
                 return Center(
-                  child: Text('Error: ${s.error}', style: DS.p.copyWith(color: Colors.redAccent)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Error: ${s.error}',
+                      style: DS.p.copyWith(color: Colors.redAccent),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 );
               }
 
@@ -183,192 +221,88 @@ class _AsistenciaReportScreenState extends State<AsistenciaReportScreen> {
               }
 
               final data = s.data!;
+              final items = _buildItems(data);
 
-              // ================== Construcción de items combinados ==================
-              final Map<String, AsistenciaRegistro> regPorFecha = {
-                for (final r in data.registros) r.fecha: r
-              };
-
-              final Set<String> faltasFechas = {
-                ...(data.faltas?.diasFaltados ?? const <String>[])
-              };
-
-              // 1) Items de asistencia
-              final List<DiaItem> items = [
-                for (final r in data.registros)
-                  DiaItem(
-                    fechaISO: r.fecha,
-                    horas: r.horas,
-                    asistio: (r.horas.isNotEmpty) || (r.registrosEnElDia > 0),
-                  ),
-              ];
-
-              // 2) Items de faltas que no estén ya en registros
-            for (final f in faltasFechas) {
-  if (!regPorFecha.containsKey(f)) {
-    items.add(
-      DiaItem( // ← sin `const`
-        fechaISO: f,
-        horas: const <String>[], // esta sí puede ser const
-        asistio: false,
-      ),
-    );
-  }
-}
-
-
-              // 3) Ordenar desc por fecha
-              items.sort((DiaItem a, DiaItem b) {
-                final DateTime? da = DateTime.tryParse(a.fechaISO);
-                final DateTime? db = DateTime.tryParse(b.fechaISO);
-                if (da == null && db == null) return 0;
-                if (da == null) return 1;
-                if (db == null) return -1;
-                return db.compareTo(da); // más reciente primero
-              });
-
-              // ================== UI ==================
               return ListView(
                 padding: EdgeInsets.zero,
                 children: [
+                  /// ===== HEADER =====
                   _HeaderAsistencia(
                     nombre: data.asistenteNombre ?? '-',
                     cedula: data.cedula,
-                    curso: data.curso.nombre ?? '-',
-                    porcentaje: (data.resumen.porcentajeAsistencia).toDouble(),
+                    curso: _cursoNombreSeleccionado,
+                    porcentaje: data.resumen.porcentajeAsistencia.toDouble(),
                     estado: data.curso.estado ?? '—',
                     cargando: false,
                     onActualizar: _refresh,
                     onDescargar: () async {
-                      final url = _svc.buildPdfUri(data.cedula);
-                      try {
-                        await _runWithLoader(
-                          message: 'Descargando PDF…',
-                          task: () => FileDownloader.downloadAndOpen(
-                            url,
-                            filename: 'asistencia_${data.cedula}.pdf',
-                          ),
-                        );
-                      } catch (e) {
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('No se pudo abrir el PDF: $e')),
-                        );
-                      }
+                      final cursoId = _cursoSeleccionadoId?.toString() ?? '';
+                      if (cursoId.isEmpty) return;
+
+                      final url = _svc.buildPdfUri(
+                        data.cedula,
+                        cursoId: cursoId,
+                      );
+
+                      await FileDownloader.downloadAndOpen(
+                        url,
+                        filename: 'asistencia_${data.cedula}.pdf',
+                      );
                     },
                   ),
-                  const SizedBox(height: 16),
 
-                  // === Tarjeta de resumen ===
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      decoration: DS.cardDeco(),
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Resumen general', style: DS.h2),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Días asistidos: ${data.resumen.diasConAsistencia} / ${data.curso.diasActuales ?? 0}',
-                            style: DS.p,
-                          ),
-                          Text(
-                            'Porcentaje: ${data.resumen.porcentajeAsistencia.toStringAsFixed(1)}%',
-                            style: DS.p,
-                          ),
-                          if (data.resumen.ultimaFecha != null)
-                            Text(
-                              'Último registro: ${_fmtFriendlyDate(data.resumen.ultimaFecha)}',
-                              style: DS.pDim,
-                            ),
-                        ],
-                      ),
+                  /// ===== SELECTOR (solo si tiene +1) =====
+                  if (_cursos.length > 1)
+                    _CursoSelectorCard(
+                      cursos: _cursos,
+                      cursoSeleccionadoId: _cursoSeleccionadoId,
+                      onChanged: (v) {
+                        setState(() => _cursoSeleccionadoId = v);
+                        _consultar();
+                      },
                     ),
-                  ),
 
-                  const SizedBox(height: 16),
-
-                  // === Detalle por día (Fecha | Hora(s) | Estado) ===
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('Detalle por día', style: DS.h2),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Encabezado tipo tabla
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      decoration: DS.cardDeco(),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: Text('Fecha', style: DS.p.copyWith(fontWeight: FontWeight.w800)),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text('Hora(s)', style: DS.p.copyWith(fontWeight: FontWeight.w800)),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              'Estado',
-                              style: DS.p.copyWith(fontWeight: FontWeight.w800),
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                        ],
+                  /// ===== DETALLE =====
+                  ...items.map(
+                    (it) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-
-                  ...items.map((DiaItem it) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        child: Container(
-                          decoration: DS.cardDeco(),
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              // Columna 1: Fecha (friendly)
-                              Expanded(
-                                flex: 3,
-                                child: Text(
-                                  _fmtFriendlyDate(it.fechaISO),
-                                  style: DS.p.copyWith(fontWeight: FontWeight.w600),
+                      child: Container(
+                        decoration: DS.cardDeco(),
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                _fmtFriendlyDate(it.fechaISO),
+                                style: DS.p.copyWith(
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              // Columna 2: Hora(s) con sufijo "m"
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  it.asistio
-                                      ? (it.horas.isEmpty
-                                          ? '—'
-                                          : (it.horas.length == 1
-                                              ? '${_fmtHoras(it.horas)} m'
-                                              : '${_fmtHoras(it.horas.first)} m (+${it.horas.length - 1})'))
-                                      : '—',
-                                  style: DS.pDim,
-                                  textAlign: TextAlign.center,
-                                ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                it.asistio ? _fmtHoras(it.horas) : '—',
+                                textAlign: TextAlign.center,
+                                style: DS.pDim,
                               ),
-                              // Columna 3: Estado (derecha)
-                              Expanded(
-                                flex: 2,
-                                child: Align(
-                                  alignment: Alignment.centerRight,
-                                  child: _estadoChip(it.asistio),
-                                ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: _estadoChip(it.asistio),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 24),
                 ],
@@ -381,8 +315,122 @@ class _AsistenciaReportScreenState extends State<AsistenciaReportScreen> {
   }
 }
 
+/// ✅ Selector refactorizado en widget (tu build queda limpito)
+class _CursoSelectorCard extends StatelessWidget {
+  final List<Map<String, dynamic>> cursos;
+  final String? cursoSeleccionadoId;
+  final ValueChanged<String> onChanged;
+
+  const _CursoSelectorCard({
+    required this.cursos,
+    required this.cursoSeleccionadoId,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      child: Container(
+        decoration: BoxDecoration(
+          color: DS.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: DS.primary.withOpacity(.55), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.25),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.school_rounded, color: DS.accent, size: 18),
+                  const SizedBox(width: 8),
+                  Text('Curso', style: DS.p.copyWith(fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: DS.primary.withOpacity(.14),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: DS.primary.withOpacity(.35)),
+                    ),
+                    child: Text(
+                      '${cursos.length} cursos',
+                      style: DS.pDim.copyWith(fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Selecciona el curso para ver el reporte',
+                style: DS.pDim.copyWith(fontSize: 12),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                decoration: BoxDecoration(
+                  color: DS.cardSoft,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: DS.cardSoft.withOpacity(.9)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: cursoSeleccionadoId,
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: DS.text,
+                    ),
+                    dropdownColor: DS.card,
+                    style: DS.p.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: DS.text,
+                    ),
+                    items: cursos.map<DropdownMenuItem<String>>((c) {
+                      final id = c['_id']?.toString() ?? '';
+                      final nombre = c['nombre']?.toString() ?? '—';
+                      return DropdownMenuItem<String>(
+                        value: id,
+                        child: Row(
+                          children: [
+                            const Icon(Icons.bookmark_rounded, color: DS.primary, size: 16),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(nombre, overflow: TextOverflow.ellipsis),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (v) {
+                      if (v == null || v.isEmpty) return;
+                      onChanged(v);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 class _HeaderAsistencia extends StatelessWidget {
-  final String nombre, cedula, curso, estado;
+  final String nombre;
+  final String cedula;
+  final String curso;
+  final String estado;
   final double porcentaje;
   final bool cargando;
   final VoidCallback onActualizar;
@@ -408,7 +456,8 @@ class _HeaderAsistencia extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nowStr = DateFormat('dd/MM/yyyy HH:mm', 'es').format(DateTime.now());
+    final nowStr =
+        DateFormat('dd/MM/yyyy HH:mm', 'es').format(DateTime.now());
 
     return Container(
       decoration: const BoxDecoration(
@@ -422,6 +471,7 @@ class _HeaderAsistencia extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          /// ===== TÍTULO =====
           Row(
             children: [
               const Icon(Icons.fact_check_outlined, color: DS.accent),
@@ -431,14 +481,20 @@ class _HeaderAsistencia extends StatelessWidget {
               Text(nowStr, style: DS.pDim),
             ],
           ),
-          const SizedBox(height: 12),
+
+          const SizedBox(height: 14),
+
+          /// ===== INFO PRINCIPAL =====
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
                 radius: 24,
                 backgroundColor: DS.card,
-                child: Text(_iniciales(nombre), style: DS.h2),
+                child: Text(
+                  _iniciales(nombre),
+                  style: DS.h2,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -450,13 +506,19 @@ class _HeaderAsistencia extends StatelessWidget {
                     _chip('Cédula', cedula),
                     _chip('Curso', curso),
                     _chip('Estado', estado),
-                    _chip('Asistencia', '${porcentaje.toStringAsFixed(1)}%'),
+                    _chip(
+                      'Asistencia',
+                      '${porcentaje.toStringAsFixed(1)}%',
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+
+          const SizedBox(height: 14),
+
+          /// ===== ACCIONES =====
           Row(
             children: [
               ElevatedButton.icon(
@@ -466,18 +528,22 @@ class _HeaderAsistencia extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: DS.primary,
                   foregroundColor: DS.text,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
-                onPressed: onDescargar,
+                onPressed: cargando ? null : onDescargar,
                 icon: const Icon(Icons.picture_as_pdf_outlined),
                 label: const Text('Descargar PDF'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: DS.text,
                   side: BorderSide(color: DS.card.withOpacity(.6)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ],
@@ -487,6 +553,7 @@ class _HeaderAsistencia extends StatelessWidget {
     );
   }
 
+  /// ===== CHIP INFO =====
   static Widget _chip(String label, String value) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 220),
@@ -499,13 +566,18 @@ class _HeaderAsistencia extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$label:', style: DS.pDim.copyWith(fontSize: 11)),
+          Text(
+            '$label:',
+            style: DS.pDim.copyWith(fontSize: 11),
+          ),
           const SizedBox(height: 2),
           Text(
             value.isEmpty ? '—' : value,
-            style: DS.p.copyWith(fontWeight: FontWeight.w700, fontSize: 12),
+            style: DS.p.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
             softWrap: true,
-            overflow: TextOverflow.visible,
           ),
         ],
       ),

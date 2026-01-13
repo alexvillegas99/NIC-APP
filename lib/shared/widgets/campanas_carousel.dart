@@ -72,7 +72,8 @@ class _CampanasCarouselState extends State<CampanasCarousel> {
   /// 🔹 Función para compartir en WhatsApp con la imagen y el mensaje adicional
   void _compartirEnWhatsApp(String imagenUrl) async {
     final String mensaje = Uri.encodeComponent(
-        "¡Mira esta campaña! 🚀\nSi quieres acceder a esta promoción, comunícate al +593979164982 \n$imagenUrl");
+      "¡Mira esta campaña! 🚀\nSi quieres acceder a esta promoción, comunícate al +593979164982 \n$imagenUrl",
+    );
     final String url = "https://wa.me/?text=$mensaje";
 
     if (await canLaunchUrl(Uri.parse(url))) {
@@ -86,67 +87,71 @@ class _CampanasCarouselState extends State<CampanasCarousel> {
   void _contactarPorWhatsApp(String imagenUrl) async {
     final String numero = "593979164982"; // Número de contacto en Ecuador
     final String mensaje = Uri.encodeComponent(
-        "¡Hola! Vi esta promoción y me gustaría obtener más información.\n$imagenUrl");
+      "¡Hola! Vi esta promoción y me gustaría obtener más información.\n$imagenUrl",
+    );
     final String url = "https://wa.me/$numero?text=$mensaje";
 
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url));
     } else {
       print("No se pudo abrir WhatsApp");
-    }
-  }
+    } 
+  } 
 
   @override
   Widget build(BuildContext context) {
+    if (_campanas.isEmpty) {
+      return const SizedBox.shrink(); // No muestra nada
+    }
+
     return Column(
       children: [
-        if (_campanas.isEmpty)
-          const Center(child: CircularProgressIndicator())
-        else
-          SizedBox(
-            height: 200,
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: _campanas.length,
-              itemBuilder: (context, index) {
-                final campana = _campanas[index];
-                return Stack(
-                  children: [
-                    GestureDetector(
-                      onTap: () => _abrirEnlace(campana['link']), // 🔹 Abre el enlace si existe
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            campana['imagen'],
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                          ),
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: _campanas.length,
+            itemBuilder: (context, index) {
+              final campana = _campanas[index];
+              return Stack(
+                children: [
+                  GestureDetector(
+                    onTap: () => _abrirEnlace(campana['link']),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(
+                          campana['imagen'],
+                          fit: BoxFit.cover,
+                          width: double.infinity,
                         ),
                       ),
                     ),
-                    Positioned(
-                      top: 10,
-                      right: 20,
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.share, color: Colors.white),
-                            onPressed: () => _compartirEnWhatsApp(campana['imagen']),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.chat, color: Colors.white),
-                            onPressed: () => _contactarPorWhatsApp(campana['imagen']),
-                          ),
-                        ],
-                      ),
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 20,
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.share, color: Colors.white),
+                          onPressed: () =>
+                              _compartirEnWhatsApp(campana['imagen']),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chat, color: Colors.white),
+                          onPressed: () =>
+                              _contactarPorWhatsApp(campana['imagen']),
+                        ),
+                      ],
                     ),
-                  ],
-                );
-              },
-            ),
+                  ),
+                ],
+              );
+            },
           ),
+        ),
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -158,7 +163,9 @@ class _CampanasCarouselState extends State<CampanasCarousel> {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _currentIndex == index ? Colors.black : Colors.grey.shade400,
+                color: _currentIndex == index
+                    ? Colors.black
+                    : Colors.grey.shade400,
               ),
             ),
           ),

@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
+
 import 'package:go_router/go_router.dart';
-import 'package:nic_pre_u/data/course.dart';
 import 'package:nic_pre_u/screens/home_screen.dart';
 import 'package:nic_pre_u/screens/login_screen.dart';
 import 'package:nic_pre_u/screens/myqr_screen.dart';

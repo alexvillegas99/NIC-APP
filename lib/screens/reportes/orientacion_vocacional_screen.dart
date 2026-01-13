@@ -447,8 +447,8 @@ class _HeaderOV extends StatelessWidget {
                   spacing: 10,
                   children: [
                     _chip('Nombre', nombre),
-                    _chip('Cédula', cedula),
-                    _chip('Curso', curso.replaceAll('_', ' ')),
+                    _chip('Cédula', cedula),/* 
+                    _chip('Curso', curso.replaceAll('_', ' ')), */
                     _chip('Etapa actual', etapaActual),
                     _chip('Próxima cita', proximaCita),
                   ],

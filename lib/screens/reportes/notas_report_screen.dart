@@ -473,7 +473,7 @@ class _HeaderBonitoCompact extends StatelessWidget {
                   children: [
                     _chip('Nombre', nombre),
                     _chip('Cédula', cedula),
-                    _chip('Curso', curso.replaceAll('_', ' ')),
+                 /*    _chip('Curso', curso.replaceAll('_', ' ')), */
                     _chip('Cursos', '$cursosCount'),
                     _chip('Ítems', '$itemsCount'),
                   ],

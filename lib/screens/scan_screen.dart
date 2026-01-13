@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+import 'package:mobile_scanner/mobile_scanner.dart';
+
+import 'package:nic_pre_u/services/course_service.dart';
 import 'package:nic_pre_u/shared/widgets/background_shapes.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -14,91 +17,112 @@ class ScanScreen extends StatefulWidget {
 }
 
 class _ScanScreenState extends State<ScanScreen> {
-  final String apiUrl = dotenv.env['API_URL'] ?? '';
   final MobileScannerController _controller = MobileScannerController();
-  bool isProcessing = false;
-  bool canScan = true;
+  final CourseService _courseService = CourseService();
+  final TextEditingController _searchCtrl = TextEditingController();
 
-  // ↓ Invisibles (no cambian UI)
+  final String apiUrl = dotenv.env['API_URL'] ?? '';
+
+  // modo
+  bool selectingCourse = true;
+
+  // cursos
+  bool loadingCursos = true;
+  List<Map<String, dynamic>> cursos = [];
+  List<Map<String, dynamic>> cursosFiltrados = [];
+  Map<String, dynamic>? cursoSeleccionado;
+
+  // escaneo
+  bool isProcessing = false;
+  bool canScan = false;
+
+  // anti duplicados
   String? _lastValue;
   DateTime _lastScanAt = DateTime.fromMillisecondsSinceEpoch(0);
   static const Duration _cooldown = Duration(seconds: 3);
 
+  static const Color kBaseBg = Color(0xFF0F1220);
+  static const Color kCardBg = Color(0xFF111320);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCursos();
+  }
+
   @override
   void dispose() {
-    _controller.dispose(); // liberar cámara correctamente
+    _controller.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
-void _showAttendanceSnackbar(Map<String, dynamic> asistencia) {
-  if (!mounted) return;
 
-  final nombre = asistencia['nombre'] ?? '';
-  final curso = asistencia['cursoNombre'] ?? '';
-  final porcentaje = asistencia['porcentaje'] ?? 0;
-  final estado = asistencia['estado'] ?? false; // true o false
+String formatNombre(String text) {
+  return text
+      .replaceAll('_', ' ')
+      .split(' ')
+      .map((w) =>
+          w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+      .join(' ');
+}
 
-  // color dinámico según estado
-  final Color bgColor = estado ? Colors.green : Colors.redAccent;
+  /* ============================================================
+   *  CARGAR CURSOS
+   * ============================================================ */
+Future<void> _loadCursos() async {
+  try {
+    final list = await _courseService.getActiveCourses();
 
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        content: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                estado ? Icons.check_circle : Icons.error,
-                color: Colors.white,
-                size: 32,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      estado
-                          ? "Asistencia registrada"
-                          : "Asistencia no válida",
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text("👤 $nombre", style: const TextStyle(color: Colors.white)),
-                    Text("📘 Curso: $curso", style: const TextStyle(color: Colors.white)),
-                    Text("📊 Asistencia: $porcentaje%", style: const TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 7),
-      ),
-    );
+    final mapped = list.map<Map<String, dynamic>>((c) {
+      return {
+        ...c,
+        'nombre': formatNombre(c['nombre'] ?? ''),
+      };
+    }).toList();
+
+    setState(() {
+      cursos = mapped;
+      cursosFiltrados = mapped;
+      loadingCursos = false;
+    });
+  } catch (_) {
+    loadingCursos = false;
+    _showSnackbar('❌ Error cargando cursos activos', Colors.red);
+  }
 }
 
 
-  Future<void> _sendAttendance(String qrData) async {
-    if (!canScan || isProcessing) return;
+  void _filtrarCursos(String q) {
+    setState(() {
+      cursosFiltrados = cursos
+          .where(
+            (c) => c['nombre']
+                .toString()
+                .toLowerCase()
+                .contains(q.toLowerCase()),
+          )
+          .toList();
+    });
+  }
 
-    // Evita repetir el MISMO código dentro del cooldown (invisible al usuario)
+  void _selectCurso(Map<String, dynamic> curso) {
+    setState(() {
+      cursoSeleccionado = curso;
+      selectingCourse = false;
+      canScan = true;
+    });
+  }
+
+  /* ============================================================
+   *  ESCANEAR
+   * ============================================================ */
+  Future<void> _sendAttendance(String qrData) async {
+    if (!canScan || isProcessing || cursoSeleccionado == null) return;
+
     final now = DateTime.now();
     if (_lastValue == qrData && now.difference(_lastScanAt) < _cooldown) return;
+
     _lastValue = qrData;
     _lastScanAt = now;
 
@@ -107,190 +131,247 @@ void _showAttendanceSnackbar(Map<String, dynamic> asistencia) {
       canScan = false;
     });
 
-    // Pausa cámara durante el proceso para que no “dispare” más lecturas
     await _controller.stop();
 
     try {
-      if (apiUrl.isEmpty) {
-        throw Exception('API_URL no configurada');
-      }
+      final parts = qrData.split(',');
+      if (parts.isEmpty) throw Exception('QR inválido');
 
-      final qrParts = qrData.split(',');
-      if (qrParts.length < 3) {
-        throw Exception('Formato de código QR inválido');
-      }
-
-      final Uri endpoint = Uri.parse(
+      final uri = Uri.parse(
         apiUrl.endsWith('/')
             ? '${apiUrl}asistencias/registrar'
             : '$apiUrl/asistencias/registrar',
       );
 
-      final response = await http
-          .post(endpoint, body: {'cursoId': qrParts[2], 'cedula': qrParts[0]})
-          .timeout(const Duration(seconds: 10));
+      final res = await http.post(
+        uri,
+        body: {
+          'cursoId': cursoSeleccionado!['_id'],
+          'cedula': parts[0],
+        },
+      );
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      print('responseeeee ${response.body}');
-      if (response.statusCode == 201) {
-        ///imprimir resultado
-        ///
-        final data =  jsonDecode(response.body);
-        final bool isValid = data['asistencia']['estado'];
-        print('dataaaaa ${data['asistencia']}');
-     _showAttendanceSnackbar(data['asistencia']);
-        /*   _showSnackbar(
-            '✅ Asistencia registrada para ${data['asistencia']['nombre']} perteneciente al curso ${data['asistencia']['cursoNombre']} porcentaje asistencia ${data['asistencia']['porcentaje']}',
-            isValid ? Colors.green : Colors.orange,
-          ); */
-    
+      if (res.statusCode == 201) {
+        final data = jsonDecode(res.body);
+        _showAttendanceSnackbar(data['asistencia']);
       } else {
-        final msg = _getErrorMessage(response.statusCode);
-        _showSnackbar('⚠️ $msg', Colors.red);
+        _showSnackbar(
+          '⚠️ ${_getErrorMessage(res.statusCode)}',
+          Colors.red,
+        );
       }
-    } on TimeoutException {
-      _showSnackbar(
-        '⏱️ Tiempo de espera agotado. Verifica tu conexión.',
-        Colors.orange,
-      );
     } catch (e) {
-      _showSnackbar('❌ Error: ${e.toString()}', Colors.orange);
+      _showSnackbar('❌ ${e.toString()}', Colors.orange);
     } finally {
       if (!mounted) return;
       setState(() => isProcessing = false);
-
-      // Pequeño cooldown para permitir el siguiente escaneo sin cambios visibles
       await Future.delayed(_cooldown);
-      if (!mounted) return;
-
       setState(() => canScan = true);
-      // Reanuda la cámara para el próximo escaneo
       unawaited(_controller.start());
     }
   }
 
-  void _showSnackbar(String message, Color color) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message, style: const TextStyle(color: Colors.white)),
-          backgroundColor: color,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
-  }
-
-  String _getErrorMessage(int statusCode) {
-    switch (statusCode) {
-      case 400:
-        return 'El curso no está activo.';
-      case 404:
-        return 'El asistente no pertenece al curso.';
-      case 409:
-        return 'El asistente ya tiene asistencia registrada.';
-      case 403:
-        return 'Usuario inactivo. Contacta al administrador.';
-      default:
-        return 'Ocurrió un error inesperado.';
-    }
-  }
-
+  /* ============================================================
+   *  UI
+   * ============================================================ */
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      // Asegura que la cámara se detenga al salir (sin cambiar la UI)
-      onWillPop: () async {
-        await _controller.stop();
-        return true;
-      },
-      child: Scaffold(
-        body: Stack(
-          children: [
-            const BackgroundShapes(),
+    return Scaffold(
+      body: Stack(
+        children: [
+          // 🔥 FONDO OSCURO BASE (OBLIGATORIO)
+          Container(color: kBaseBg),
 
-            // Cámara
-            MobileScanner(
-              controller: _controller,
-              fit: BoxFit.cover,
-              onDetect: (capture) {
-                if (!canScan) return;
-                final List<Barcode> barcodes = capture.barcodes;
-                if (barcodes.isNotEmpty) {
-                  final val = barcodes.first.rawValue ?? '';
-                  if (val.isNotEmpty) {
-                    _sendAttendance(val);
-                  }
-                }
-              },
-              // Manejo “silencioso” de errores de cámara
-              errorBuilder: (context, error, child) {
-                // No cambiamos la UI; solo avisamos por snackbar una vez
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    _showSnackbar(
-                      '📷 Permiso de cámara denegado o no disponible.',
-                      Colors.orange,
-                    );
-                  }
-                });
-                return const SizedBox.shrink();
-              },
-            ),
+          // 🔥 SHAPES ENCIMA DEL FONDO OSCURO
+          const BackgroundShapes(),
 
-            // UI sobre cámara (sin cambios visuales)
-            SafeArea(
-              child: Column(
-                children: [
-                  _buildTopBar(),
-                  const Spacer(),
-                  _buildScanFrame(),
-                  const Spacer(),
-                ],
+          selectingCourse ? _buildCourseSelector() : _buildScanner(),
+
+          if (isProcessing)
+            Container(
+              color: Colors.black.withOpacity(0.6),
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
               ),
             ),
-
-            if (isProcessing)
-              Container(
-                color: Colors.black.withOpacity(0.5),
-                child: const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
 
-  // --- UI idéntica: no hay cambios visuales ---
-  Widget _buildTopBar() {
+  /* =======================
+   *  VISTA 1: CURSOS
+   * ======================= */
+  Widget _buildCourseSelector() {
+    return SafeArea(
+      child: Column(
+        children: [
+          _buildTopBar('Selecciona un curso', showLogo: true),
+
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: _filtrarCursos,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Buscar curso...',
+                hintStyle: const TextStyle(color: Colors.white70),
+                prefixIcon: const Icon(Icons.search, color: Colors.white),
+                filled: true,
+                fillColor: kCardBg,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white24),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+
+          Expanded(
+            child: loadingCursos
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                : ListView.builder(
+                    itemCount: cursosFiltrados.length,
+                    itemBuilder: (_, i) {
+                      final c = cursosFiltrados[i];
+                      return Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: kCardBg,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white12),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ListTile(
+                          title: Text(
+                            c['nombre'],
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          trailing: const Icon(
+                            Icons.qr_code,
+                            color: Colors.white,
+                          ),
+                          onTap: () => _selectCurso(c),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /* =======================
+   *  VISTA 2: ESCÁNER
+   * ======================= */
+  Widget _buildScanner() {
+    return WillPopScope(
+      onWillPop: () async {
+        setState(() {
+          selectingCourse = true;
+          cursoSeleccionado = null;
+          canScan = false;
+        });
+        await _controller.stop();
+        return false;
+      },
+      child: Stack(
+        children: [
+          MobileScanner(
+            controller: _controller,
+            fit: BoxFit.cover,
+            onDetect: (capture) {
+              if (!canScan) return;
+              final barcodes = capture.barcodes;
+              if (barcodes.isNotEmpty) {
+                final val = barcodes.first.rawValue ?? '';
+                if (val.isNotEmpty) {
+                  _sendAttendance(val);
+                }
+              }
+            },
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                _buildTopBar(
+                  cursoSeleccionado!['nombre'],
+                  showLogo: true,
+                ),
+                const Spacer(),
+                _buildScanFrame(),
+                const Spacer(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopBar(String title, {bool showLogo = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
-            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back,
+                color: Colors.white, size: 28),
+            onPressed: () {
+              if (selectingCourse) {
+                Navigator.pop(context);
+              } else {
+                setState(() {
+                  selectingCourse = true;
+                  cursoSeleccionado = null;
+                  canScan = false;
+                });
+                _controller.stop();
+              }
+            },
           ),
-          Column(
-            children: [
-              Image.asset('assets/imagenes/logo.png', height: 80),
-              const SizedBox(height: 5),
-              const Text(
-                'Escanea un código QR',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              children: [
+                if (showLogo)
+                  Image.asset(
+                    'assets/imagenes/logo.png',
+                    height: 60,
+                  ),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(width: 40),
         ],
@@ -309,5 +390,94 @@ void _showAttendanceSnackbar(Map<String, dynamic> asistencia) {
         ),
       ),
     );
+  }
+
+  /* ============================================================
+   *  FEEDBACK
+   * ============================================================ */
+  void _showSnackbar(String msg, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(msg, style: const TextStyle(color: Colors.white)),
+          backgroundColor: color,
+        ),
+      );
+  }
+
+  void _showAttendanceSnackbar(Map<String, dynamic> a) {
+    final bool estado = a['estado'] == true;
+    final String nombre = a['nombre'] ?? '';
+    final String curso = a['cursoNombre'] ?? '';
+    final int porcentaje = a['porcentaje'] ?? 0;
+
+    final Color bg = estado ? Colors.green : Colors.red;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          duration: const Duration(seconds: 7),
+          content: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  estado ? Icons.check_circle : Icons.error,
+                  color: Colors.white,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        estado
+                            ? 'Asistencia registrada'
+                            : 'Asistencia no válida',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text('👤 $nombre',
+                          style: const TextStyle(color: Colors.white)),
+                      Text('📘 Curso: $curso',
+                          style: const TextStyle(color: Colors.white)),
+                      Text('📊 Asistencia: $porcentaje%',
+                          style: const TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+  }
+
+  String _getErrorMessage(int code) {
+    switch (code) {
+      case 400:
+        return 'Curso no activo';
+      case 404:
+        return 'Asistente no pertenece al curso';
+      case 409:
+        return 'Asistencia ya registrada';
+      default:
+        return 'Error inesperado';
+    }
   }
 }
