@@ -1,5 +1,6 @@
 
 import 'package:go_router/go_router.dart';
+import 'package:nic_pre_u/screens/calificar_asesor.dart';
 import 'package:nic_pre_u/screens/home_screen.dart';
 import 'package:nic_pre_u/screens/login_screen.dart';
 import 'package:nic_pre_u/screens/myqr_screen.dart';
@@ -64,6 +65,11 @@ GoRouter buildRouter() {
             path: 'notas',
             name: 'notas',
             builder: (context, state) => const NotasReportScreen(),
+          ),
+            GoRoute(
+            path: 'calificacion',
+            name: 'calificacion',
+            builder: (context, state) => const CalificarAtencionScreen(),
           ),
           GoRoute(
             path: 'orientacion',

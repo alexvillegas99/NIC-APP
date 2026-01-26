@@ -16,6 +16,19 @@ class MenuCard {
           "highlight":
               true // 🔹 Podemos usar esto para aplicar un estilo especial en la UI
         }
+        
+      ];
+    }else if (userRole == "ASESOR" ) {
+      return [
+      
+          {
+          "icon": Icons.note, // 🔹 Icono más intuitivo para escanear
+          "text": "Calificar atención", // 🔹 Texto más claro y directo
+          "route": "/home/calificacion",
+          "description": "Calificar atencion cliente", // 🔹 Descripción más precisa
+          "highlight":
+              true // 🔹 Podemos usar esto para aplicar un estilo especial en la UI
+        }
       ];
     } else if(userRole == "ESTUDIANTE") {
       return [
