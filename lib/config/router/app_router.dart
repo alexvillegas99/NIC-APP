@@ -1,6 +1,7 @@
 
 import 'package:go_router/go_router.dart';
 import 'package:nic_pre_u/screens/calificar_asesor.dart';
+import 'package:nic_pre_u/screens/evaluaciones_screen.dart';
 import 'package:nic_pre_u/screens/home_screen.dart';
 import 'package:nic_pre_u/screens/login_screen.dart';
 import 'package:nic_pre_u/screens/myqr_screen.dart';
@@ -8,6 +9,7 @@ import 'package:nic_pre_u/screens/reportes/asistencia_report_screen.dart';
 import 'package:nic_pre_u/screens/reportes/notas_report_screen.dart';
 import 'package:nic_pre_u/screens/reportes/orientacion_vocacional_screen.dart';
 import 'package:nic_pre_u/screens/scan_screen.dart';
+import 'package:nic_pre_u/screens/student_schedule_screen.dart';
 import 'package:nic_pre_u/services/auth_service.dart';
 import 'package:nic_pre_u/services/course_service.dart';
 import 'package:nic_pre_u/shared/ui/course_grades_screen.dart';
@@ -55,11 +57,22 @@ GoRouter buildRouter() {
             name: 'myqr',
             builder: (context, state) => const MyQRScreen(),
           ),
+            GoRoute(
+            path: 'horarios-estudiantes',
+            name: 'horarios-estudiantes',
+            builder: (context, state) => const StudentScheduleScreen(),
+          ),
             // ⬇️ nuevas rutas
           GoRoute(
             path: 'asistencia',
             name: 'asistencia',
             builder: (context, state) => const AsistenciaReportScreen(),
+          ),
+             // ⬇️ nuevas rutas
+          GoRoute(
+            path: 'evaluaciones-activas',
+            name: 'evaluaciones-activas',
+            builder: (context, state) => const EvaluacionesScreen(),
           ),
           GoRoute(
             path: 'notas',

@@ -11,6 +11,7 @@ import 'package:nic_pre_u/shared/widgets/logout_button.dart';
 import 'package:nic_pre_u/shared/widgets/menu_card.dart';
 import 'package:nic_pre_u/shared/widgets/background_shapes.dart';
 import 'package:nic_pre_u/shared/widgets/campanas_carousel.dart';
+import 'package:nic_pre_u/services/evaluaciones_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,6 +22,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final AuthService _authService = AuthService();
+  final EvaluacionesService _evaluacionesService = EvaluacionesService();
 
   late PageController _pageController;
   Timer? _timer;
@@ -149,61 +151,72 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
 
                 // Body
-Expanded(
-  child: RefreshIndicator(
-    onRefresh: _refreshAll,
-    child: SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          FutureBuilder<String>(
-            future: _getUserRole(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
-              }
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _refreshAll,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          FutureBuilder<List<dynamic>>(
+                            future: Future.wait([
+                              _getUserRole(),
+                              _evaluacionesService.existenEvaluacionesActivas(),
+                            ]),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              }
 
-              final userRole = snapshot.data ?? 'ADMIN';
+                              if (!snapshot.hasData) {
+                                return const SizedBox();
+                              }
 
-              final menuItems = MenuCard(
-                userRole: userRole,
-              ).getMenuItems();
+                              final userRole = snapshot.data![0] as String;
+                              final tieneEvaluaciones =
+                                  snapshot.data![1] as bool;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ActionMenu(
-                    items: menuItems,
-                    maxTileWidth: 280,
-                    tileHeight: 200,
-                  ),
-                  const SizedBox(height: 20),
+                              final menuItems = MenuCard(
+                                userRole: userRole,
+                                tieneEvaluacionesActivas: tieneEvaluaciones,
+                              ).getMenuItems();
 
-                  // 👇 Solo se muestra si es ESTUDIANTE
-                  if (userRole.toUpperCase() == 'ESTUDIANTE') ...[
-                    CoursesSection(
-                      service: CourseService(),
-                      maxItems: 50,
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  ActionMenu(
+                                    items: menuItems,
+                                    maxTileWidth: 280,
+                                    tileHeight: 200,
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  if (userRole.toUpperCase() ==
+                                      'ESTUDIANTE') ...[
+                                    CoursesSection(
+                                      service: CourseService(),
+                                      maxItems: 50,
+                                    ),
+                                    const SizedBox(height: 20),
+                                  ],
+
+                                  _buildAutoScrollingCards(),
+                                  const SizedBox(height: 20),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 20),
-                  ],
-
-                  _buildAutoScrollingCards(),
-                  const SizedBox(height: 20),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    ),
-  ),
-)
-             ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),

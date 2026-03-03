@@ -19,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
 
   bool _obscurePassword = true;
-  bool _credentialMode = false; // modo credencial: solo cédula
+  bool _credentialMode = true; // modo credencial: solo cédula
 
   // Colores del diseño
   static const Color bg = Color(0xFF0E0F16);

@@ -166,4 +166,36 @@ Future<List<Map<String, dynamic>>> fetchAsistentesPorCedula({String? cedula}) as
     final c = (user?['cedula'] ?? '').toString().trim();
     return c.isEmpty ? null : c;
   }
+
+  /// GET /asistentes/buscar/cursos/:cedula
+Future<List<Map<String, dynamic>>> fetchCursosPorCedula({String? cedula}) async {
+  final user = await _auth.getUser();
+  final ced = (cedula ?? (user?['cedula'] ?? '')).toString().trim();
+
+  if (ced.isEmpty) return [];
+
+  final uri = Uri.parse('$baseUrl/asistentes/buscar/cursos/$ced');
+  print('uriiiii $uri');
+  final headers = await _authHeaders();
+
+  debugLog('GET cursos por cedula', uri.toString());
+
+  final res = await http.get(uri, headers: headers);
+
+  final status = res.statusCode;
+    print('resssss   $status');
+  if (res.statusCode >= 200 && res.statusCode < 300) {
+    final body = json.decode(res.body);
+
+    final dynamic payload =
+        (body is Map && body.containsKey('data')) ? body['data'] : body;
+
+    return asListOfStringKeyedMaps(payload);
+  }
+
+  if (res.statusCode == 404) return [];
+
+  throw Exception('Error ${res.statusCode} al obtener cursos');
+}
+
 }
