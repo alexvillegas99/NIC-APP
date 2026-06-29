@@ -1,90 +1,87 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:nic_pre_u/shared/ui/design_system.dart';
 
 class AppTheme {
-  static ThemeData getAppTheme() => ThemeData(
-        colorScheme: const ColorScheme(
-          brightness: Brightness.light,
-          primary: Color(0xFF672BB6), // Rojo principal
-          onPrimary: Colors.white, // Texto/blanco sobre fondo rojo
-          secondary: Color(0xFF8F8F8F), // Gris para elementos secundarios
-          onSecondary: Colors.white, // Texto/blanco sobre fondo secundario
-          surface: Colors.white, // Fondo general
-          onSurface: Color(0xFF333333), // Texto oscuro sobre fondo claro
-          error: Color(0xFFD32F2F), // Rojo para errores
-          onError: Colors.white, // Texto blanco sobre fondo de error
-          primaryContainer: Color(0xFFFFCDD2), // Variante clara del primario
-          onPrimaryContainer:
-              Color.fromARGB(255, 103, 43, 182), // Texto oscuro sobre variante clara
-          secondaryContainer:
-              Color(0xFFC7C7C7), // Variante clara del secundario (gris claro)
-          onSecondaryContainer:
-              Color(0xFF424242), // Texto oscuro sobre variante clara
-          outline: Color(0xFF8F8F8F), // Gris para bordes o delineaciones
-        ),
+  static ThemeData getAppTheme() {
+    final textTheme = GoogleFonts.poppinsTextTheme(
+      ThemeData.dark().textTheme,
+    );
 
-        // Estilo de AppBar
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color.fromARGB(255, 103, 43, 182), // Rojo principal
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      textTheme: textTheme,
+      scaffoldBackgroundColor: DS.bg,
+      colorScheme: const ColorScheme.dark(
+        primary: DS.purple,
+        onPrimary: Colors.white,
+        secondary: DS.cyan,
+        onSecondary: Colors.white,
+        surface: DS.card,
+        onSurface: DS.textPrimary,
+        error: DS.red,
+        onError: Colors.white,
+        outline: DS.divider,
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: DS.bg,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: DS.textPrimary),
+        titleTextStyle: DS.poppins(size: 18, weight: FontWeight.w600, color: DS.textPrimary),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: DS.purple,
+          foregroundColor: Colors.white,
+          textStyle: DS.poppins(size: 16, weight: FontWeight.w600),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 0,
-          iconTheme: IconThemeData(color: Colors.white),
-          titleTextStyle: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
         ),
-
-        // Estilo de botones elevados
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color.fromARGB(255, 103, 43, 182), // Rojo principal
-            foregroundColor: Colors.white, // Texto blanco
-            textStyle: const TextStyle(fontWeight: FontWeight.bold),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: DS.cardSoft,
+        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
-
-        // Estilo de texto
-        textTheme: TextTheme(
-          bodyLarge: TextStyle(color: Colors.grey[800], fontSize: 16),
-          bodyMedium: TextStyle(color: Colors.grey[600], fontSize: 14),
-          titleLarge: const TextStyle(
-            color: Color.fromARGB(255, 103, 43, 182), // Rojo principal
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: DS.divider, width: 1),
         ),
-
-        // Estilo de campos de texto
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.grey[100],
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: Color.fromARGB(255, 103, 43, 182), // Rojo principal
-            ),
-          ),
-          labelStyle: TextStyle(color: Colors.grey[700]),
-          hintStyle: TextStyle(color: Colors.grey[400]),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: DS.purple, width: 1.5),
         ),
-
-        // Estilo de ToggleButtons
-        toggleButtonsTheme: ToggleButtonsThemeData(
-          borderColor: const Color(0xFF8F8F8F), // Gris
-          selectedBorderColor: const Color(0xFF8F8F8F), // Gris
-          selectedColor: Colors.white,
-          fillColor: const Color(0xFF8F8F8F), // Gris
-          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          borderRadius: BorderRadius.circular(20),
+        labelStyle: DS.poppins(size: 14, color: DS.textSecondary),
+        hintStyle: DS.poppins(size: 14, color: DS.textSecondary),
+      ),
+      cardTheme: CardThemeData(
+        color: DS.card,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: DS.divider, width: 1),
         ),
-      );
+      ),
+      dividerTheme: const DividerThemeData(
+        color: DS.divider,
+        thickness: 1,
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: DS.card,
+        selectedItemColor: DS.purple,
+        unselectedItemColor: DS.textSecondary,
+        type: BottomNavigationBarType.fixed,
+        elevation: 0,
+        selectedLabelStyle: DS.poppins(size: 11, weight: FontWeight.w600),
+        unselectedLabelStyle: DS.poppins(size: 11),
+      ),
+    );
+  }
 }

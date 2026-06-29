@@ -10,12 +10,12 @@ Map<String, dynamic> asStringKeyedMap(dynamic v) {
 List<Map<String, dynamic>> asListOfStringKeyedMaps(dynamic v) {
   if (v is List) {
     return v
-        .where((e) => e is Map)
-        .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))
+        .whereType<Map>()
+        .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e))
         .toList();
   }
   if (v is Map) {
-    return [Map<String, dynamic>.from(v as Map)];
+    return [Map<String, dynamic>.from(v)];
   }
   return <Map<String, dynamic>>[];
 }

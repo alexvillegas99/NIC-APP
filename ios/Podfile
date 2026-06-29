@@ -36,11 +36,9 @@ end
 
 post_install do |installer|
   installer.pods_project.targets.each do |t|
-    # Sube el target mínimo de TODOS los pods para evitar warnings
     t.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
     end
-    # <-- IMPORTANTE: pasar el TARGET, no el installer
     flutter_additional_ios_build_settings(t)
   end
 end

@@ -1,4 +1,6 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.pixelsmart.nic_pre_u">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.pixelsmart.nic_pre_u">
 
 
    <!-- Necesario para llamadas HTTP/HTTPS -->
@@ -12,6 +14,12 @@
 
     <!-- (Opcional) Vibración para feedback del escáner -->
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Play Console no permite permisos amplios de galería si solo se accede a archivos puntuales. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove" />
 
     <application
         android:label="NIC"

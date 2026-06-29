@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import '../services/evaluaciones_service.dart';
-import '../services/auth_service.dart';
-import '../shared/ui/design_system.dart';
-import '../shared/widgets/background_shapes.dart';
+import 'package:nic_pre_u/services/evaluaciones_service.dart';
+import 'package:nic_pre_u/services/auth_service.dart';
+import 'package:nic_pre_u/shared/ui/design_system.dart';
+import 'package:nic_pre_u/shared/widgets/nic_header.dart';
+import 'package:nic_pre_u/shared/widgets/glass_card.dart';
+import 'package:nic_pre_u/shared/widgets/background_shapes.dart';
 
 class EvaluacionesScreen extends StatefulWidget {
   const EvaluacionesScreen({super.key});
@@ -62,7 +64,7 @@ class _EvaluacionesScreenState extends State<EvaluacionesScreen> {
               "realizada": profesorItem["yaEvaluado"] ?? false,
               "evaluacionId": evaluacionId,
               "cursoNombre": curso,
-              "cursoId": item["cursoId"], // 🔥 ESTE ES EL IMPORTANTE
+              "cursoId": item["cursoId"],
             });
           }
         }
@@ -76,6 +78,7 @@ class _EvaluacionesScreenState extends State<EvaluacionesScreen> {
       });
     } catch (e) {
       setState(() => _loading = false);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Error cargando evaluaciones")),
       );
@@ -85,100 +88,96 @@ class _EvaluacionesScreenState extends State<EvaluacionesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F1C),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _header(),
-            const SizedBox(height: 20),
-            Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: Colors.purple),
-                    )
-                  : _data.isEmpty
-                  ? const Center(
-                      child: Text(
-                        "No hay evaluaciones activas",
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _cargarTodo,
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        children: _data.entries.map((evaluacionEntry) {
-                          final nombreEvaluacion = evaluacionEntry.key;
-                          final cursos = evaluacionEntry.value;
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Text(
-                                  nombreEvaluacion,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+      backgroundColor: DS.bg,
+      body: Stack(
+        children: [
+          const BackgroundShapes(),
+          Column(
+            children: [
+              NicHeader(
+                title: 'Evaluar Profesores',
+                color: DS.orange,
+                onBack: () => Navigator.pop(context),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: _loading
+                    ? Center(
+                        child: CircularProgressIndicator(color: DS.primary),
+                      )
+                    : _data.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.assignment_turned_in_rounded,
+                                    size: 56,
+                                    color: DS.textSecondary.withValues(alpha: 0.4)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No hay evaluaciones activas',
+                                  style: DS.poppins(
+                                    size: 15,
+                                    weight: FontWeight.w500,
+                                    color: DS.textSecondary,
                                   ),
                                 ),
-                              ),
-                              ...cursos.entries.map((cursoEntry) {
-                                return _CursoGroupCard(
-                                  curso: cursoEntry.key,
-                                  profesores: cursoEntry.value,
-                                  onEvaluado: (profesorEvaluado) {
-                                    setState(() {
-                                      profesorEvaluado["realizada"] = true;
-                                    });
-                                  },
-                                );
-                              }),
-                              const SizedBox(height: 24),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+                              ],
+                            ),
+                          )
+                        : RefreshIndicator(
+                            color: DS.primary,
+                            onRefresh: _cargarTodo,
+                            child: ListView(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              children: _data.entries.map((evaluacionEntry) {
+                                final nombreEvaluacion = evaluacionEntry.key;
+                                final cursos = evaluacionEntry.value;
 
-  Widget _header() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-      ),
-      child: Row(
-        children: const [
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              "Evaluar Profesores",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          bottom: 12, top: 8),
+                                      child: Text(
+                                        nombreEvaluacion,
+                                        style: DS.poppins(
+                                          size: 18,
+                                          weight: FontWeight.w700,
+                                          color: DS.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    ...cursos.entries.map((cursoEntry) {
+                                      return _CursoGroupCard(
+                                        curso: cursoEntry.key,
+                                        profesores: cursoEntry.value,
+                                        onEvaluado: (profesorEvaluado) {
+                                          setState(() {
+                                            profesorEvaluado["realizada"] = true;
+                                          });
+                                        },
+                                      );
+                                    }),
+                                    const SizedBox(height: 16),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
+                          ),
               ),
-            ),
+            ],
           ),
         ],
       ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Course Group Card
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _CursoGroupCard extends StatelessWidget {
   final String curso;
@@ -193,35 +192,51 @@ class _CursoGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1F2937), Color(0xFF111827)],
-        ),
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            curso,
-            style: const TextStyle(
-              color: Color(0xFF8E2DE2),
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: NicCard(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    gradient: DS.nicGradientVertical,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    curso,
+                    style: DS.poppins(
+                      size: 16,
+                      weight: FontWeight.w700,
+                      color: DS.primary,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 16),
-          ...profesores.map(
-            (prof) => _ProfesorItem(data: prof, onEvaluado: onEvaluado),
-          ),
-        ],
+            const SizedBox(height: 14),
+            ...profesores.map(
+              (prof) =>
+                  _ProfesorItem(data: prof, onEvaluado: onEvaluado),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Professor Item
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ProfesorItem extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -233,63 +248,99 @@ class _ProfesorItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool realizada = data["realizada"] ?? false;
 
-    return InkWell(
-      onTap: realizada
-          ? null
-          : () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => CalificarProfesorScreen(
-                    evaluacionId: data["evaluacionId"],
-                    profesor: data["profesor"],
-                    cursoNombre: data["cursoNombre"],
-                    cursoId: data["cursoId"],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: realizada
+              ? null
+              : () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CalificarProfesorScreen(
+                        evaluacionId: data["evaluacionId"],
+                        profesor: data["profesor"],
+                        cursoNombre: data["cursoNombre"],
+                        cursoId: data["cursoId"],
+                      ),
+                    ),
+                  );
+
+                  if (result == true) {
+                    onEvaluado(data);
+                  }
+                },
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: DS.bg,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: realizada
+                        ? DS.success.withValues(alpha: 0.12)
+                        : DS.warning.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    realizada
+                        ? Icons.check_circle_rounded
+                        : Icons.pending_actions_rounded,
+                    color: realizada ? DS.success : DS.warning,
+                    size: 20,
                   ),
                 ),
-              );
-
-              if (result == true) {
-                onEvaluado(data);
-              }
-            },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0F172A),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              realizada ? Icons.check_circle : Icons.pending_actions,
-              color: realizada
-                  ? const Color(0xFF22C55E)
-                  : const Color(0xFFF59E0B),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                data["profesor"],
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        data["profesor"],
+                        style: DS.poppins(
+                          size: 14,
+                          weight: FontWeight.w600,
+                          color: DS.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        realizada ? 'Evaluado' : 'Pendiente',
+                        style: DS.poppins(
+                          size: 12,
+                          weight: FontWeight.w500,
+                          color: realizada ? DS.success : DS.warning,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                if (!realizada)
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: DS.textSecondary,
+                    size: 15,
+                  ),
+              ],
             ),
-            if (!realizada)
-              const Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.white54,
-                size: 16,
-              ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Calificar Profesor Screen
+// ─────────────────────────────────────────────────────────────────────────────
 
 class CalificarProfesorScreen extends StatefulWidget {
   final String evaluacionId;
@@ -360,15 +411,17 @@ class _CalificarProfesorScreenState extends State<CalificarProfesorScreen> {
         calificacion: calificacion!,
         estudianteNombre: _user?["nombre"] ?? "",
         estudianteCedula: _user?["cedula"] ?? "",
-        observacion: _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
+        observacion:
+            _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
       );
 
       if (mounted) {
         Navigator.pop(context, true);
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Error enviando evaluación")),
+        const SnackBar(content: Text("Error enviando evaluacion")),
       );
     } finally {
       if (mounted) {
@@ -380,210 +433,245 @@ class _CalificarProfesorScreenState extends State<CalificarProfesorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F1C),
+      backgroundColor: DS.bg,
       body: Stack(
         children: [
           const BackgroundShapes(),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  //////////////////////////////////////////////////////
-                  /// HEADER
-                  //////////////////////////////////////////////////////
-                  Row(
+          Column(
+            children: [
+              NicHeader(
+                title: 'Realizar evaluación',
+                color: DS.orange,
+                onBack: () => Navigator.pop(context),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        "Realizar evaluación",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                      // Info card
+                      NicCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Profesor',
+                              style: DS.poppins(
+                                size: 12,
+                                weight: FontWeight.w500,
+                                color: DS.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.profesor,
+                              style: DS.poppins(
+                                size: 16,
+                                weight: FontWeight.w700,
+                                color: DS.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Container(
+                              height: 1,
+                              color: DS.bg,
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              'Curso',
+                              style: DS.poppins(
+                                size: 12,
+                                weight: FontWeight.w500,
+                                color: DS.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.cursoNombre,
+                              style: DS.poppins(
+                                size: 14,
+                                weight: FontWeight.w500,
+                                color: DS.textPrimary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+
+                      const SizedBox(height: 24),
+
+                      Text(
+                        'Como calificas al profesor?',
+                        textAlign: TextAlign.center,
+                        style: DS.poppins(
+                          size: 16,
+                          weight: FontWeight.w600,
+                          color: DS.textPrimary,
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Rating options
+                      ..._opciones.map((opt) {
+                        final selected = calificacion == opt['value'];
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => setState(
+                                  () => calificacion = opt['value'] as int),
+                              borderRadius: BorderRadius.circular(16),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: selected
+                                        ? DS.primary
+                                        : Colors.grey.shade200,
+                                    width: selected ? 2 : 1,
+                                  ),
+                                  boxShadow: selected
+                                      ? [
+                                          BoxShadow(
+                                            color: DS.primary
+                                                .withValues(alpha: 0.15),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ]
+                                      : [
+                                          BoxShadow(
+                                            color: Colors.black
+                                                .withValues(alpha: 0.04),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 22,
+                                      backgroundColor: DS.bg,
+                                      foregroundImage: AssetImage(
+                                        opt['asset'] as String,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Text(
+                                      opt['label'] as String,
+                                      style: DS.poppins(
+                                        size: 15,
+                                        weight: selected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: DS.textPrimary,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    if (selected)
+                                      Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          gradient: DS.nicGradient,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.check_rounded,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+
+                      const SizedBox(height: 20),
+
+                      // Observation field
+                      TextField(
+                        controller: _obsCtrl,
+                        maxLines: 3,
+                        style: DS.poppins(
+                          size: 14,
+                          color: DS.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Agregar observacion (opcional)',
+                          hintStyle: DS.poppins(
+                            size: 14,
+                            color: DS.textSecondary.withValues(alpha: 0.5),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade200),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade200),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: DS.primary, width: 1.5),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      // Submit button
+                      AnimatedOpacity(
+                        opacity: calificacion != null ? 1.0 : 0.5,
+                        duration: const Duration(milliseconds: 200),
+                        child: NicGradientButton(
+                          text: 'Enviar calificacion',
+                          onPressed: calificacion == null || _enviando
+                              ? () {}
+                              : _enviar,
+                          icon: _enviando ? null : Icons.send_rounded,
+                        ),
+                      ),
+
+                      if (_enviando)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: DS.primary,
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
-
-                  const SizedBox(height: 20),
-
-                  //////////////////////////////////////////////////////
-                  /// CARD INFORMACIÓN
-                  //////////////////////////////////////////////////////
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF111827),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Profesor",
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.profesor,
-                          style: const TextStyle(
-                            color: Color(0xFF8E2DE2),
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          "Curso",
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.cursoNombre,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  //////////////////////////////////////////////////////
-                  /// PREGUNTA
-                  //////////////////////////////////////////////////////
-                  const Text(
-                    "¿Cómo calificas al profesor?",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  //////////////////////////////////////////////////////
-                  /// OPCIONES
-                  //////////////////////////////////////////////////////
-                  ..._opciones.map((opt) {
-                    final selected = calificacion == opt['value'];
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: InkWell(
-                        onTap: () =>
-                            setState(() => calificacion = opt['value'] as int),
-                        borderRadius: BorderRadius.circular(30),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 14,
-                            horizontal: 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1F2937),
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(
-                              color: selected
-                                  ? const Color(0xFF8E2DE2)
-                                  : Colors.white24,
-                              width: selected ? 2 : 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 22,
-                                backgroundColor: const Color(0xFF1F2937),
-                                foregroundImage: AssetImage(
-                                  opt['asset'] as String,
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Text(
-                                opt['label'] as String,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: selected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-
-                  const SizedBox(height: 20),
-
-                  //////////////////////////////////////////////////////
-                  /// OBSERVACIÓN
-                  //////////////////////////////////////////////////////
-                  TextField(
-                    controller: _obsCtrl,
-                    maxLines: 3,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: "Agregar observación (opcional)",
-                      hintStyle: const TextStyle(color: Colors.white38),
-                      filled: true,
-                      fillColor: const Color(0xFF1F2937),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  //////////////////////////////////////////////////////
-                  /// BOTÓN ENVIAR
-                  //////////////////////////////////////////////////////
-                  ElevatedButton(
-                    onPressed: calificacion == null || _enviando
-                        ? null
-                        : _enviar,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF8E2DE2),
-                      disabledBackgroundColor: Colors.white12,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _enviando
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            "Enviar calificación",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),

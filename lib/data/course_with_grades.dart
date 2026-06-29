@@ -152,8 +152,8 @@ class SectionStats {
     }
 
     final hasTotal = total != null;
-    final baseMaxTotal   = hasTotal ? (GradeItem.toDouble(total!.max) ?? sumMaxVisibles) : sumMaxVisibles;
-    final baseScoreTotal = hasTotal ? (GradeItem.toDouble(total!.graderaw) ?? sumScore) : sumScore;
+    final baseMaxTotal   = hasTotal ? (GradeItem.toDouble(total.max) ?? sumMaxVisibles) : sumMaxVisibles;
+    final baseScoreTotal = hasTotal ? (GradeItem.toDouble(total.graderaw) ?? sumScore) : sumScore;
 
     final pCalif = sumMaxCalif > 0 ? (100 * sumScore / sumMaxCalif) : null;
     final pTotal = baseMaxTotal > 0 ? (100 * baseScoreTotal / baseMaxTotal) : null;

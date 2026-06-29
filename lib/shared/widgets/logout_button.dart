@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:nic_pre_u/shared/ui/design_system.dart';
 
 class LogoutButton extends StatelessWidget {
   const LogoutButton({super.key});
@@ -17,66 +18,82 @@ class LogoutButton extends StatelessWidget {
   void _showLogoutSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF111320), // 🎨 mismo color que card
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.logout, size: 36, color: Colors.redAccent),
-                const SizedBox(height: 12),
-                const Text(
-                  'Cerrar sesión',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFEDEDED), // textPrimary
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Icon
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: DS.error.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    size: 28,
+                    color: DS.error,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  'Cerrar sesion',
+                  style: DS.poppins(
+                    size: 18,
+                    weight: FontWeight.w700,
+                    color: DS.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  '¿Seguro que deseas cerrar sesión?',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF9EA3B0), // textSecondary
+                Text(
+                  'Seguro que deseas cerrar sesion?',
+                  style: DS.poppins(
+                    size: 14,
+                    weight: FontWeight.w400,
+                    color: DS.textSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
+
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.grey),
-                          foregroundColor: Colors.grey,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
+                      child: NicOutlineButton(
+                        text: 'Cancelar',
+                        height: 50,
                         onPressed: () => Navigator.pop(context),
-                        child: const Text("Cancelar"),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
+                      child: NicGradientButton(
+                        text: 'Cerrar sesion',
+                        height: 50,
                         onPressed: () async {
                           Navigator.pop(context);
                           await _logout(context);
                         },
-                        child: const Text("Cerrar sesión"),
                       ),
                     ),
                   ],
@@ -92,7 +109,7 @@ class LogoutButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.logout),
+      icon: const Icon(Icons.logout_rounded),
       color: Colors.white,
       onPressed: () => _showLogoutSheet(context),
     );

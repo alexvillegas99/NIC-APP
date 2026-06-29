@@ -33,13 +33,6 @@ class MenuCard {
     } else if (userRole == "ESTUDIANTE") {
       final items = [
         {
-          "icon": Icons.badge,
-          "text": "Mi Código QR",
-          "route": "/home/myqr",
-          "description": "Accede rápidamente a tu QR personal",
-          "highlight": true,
-        },
-        {
           "icon": Icons.calendar_month,
           "text": "Horarios",
           "route": "/home/horarios-estudiantes",

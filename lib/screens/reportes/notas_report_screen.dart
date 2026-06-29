@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // para formatear fecha del header
 
@@ -66,7 +65,7 @@ class _NotasReportScreenState extends State<NotasReportScreen> {
 
       final res = await _svc.obtenerNotasV2(_cedula);
       setState(() {
-        _cursos = (res is List) ? res : [];
+        _cursos = res;
         _cargando = false;
       });
     } catch (_) {
@@ -88,8 +87,6 @@ class _NotasReportScreenState extends State<NotasReportScreen> {
     }
     return t;
   }
-
-  String _fmt(DateTime d) => DateFormat('dd/MM/yyyy HH:mm').format(d);
 
   // Parseador de fecha ES (similar a tu Angular)
   DateTime? _parseFechaEs(dynamic v) {
@@ -249,7 +246,7 @@ class _NotasReportScreenState extends State<NotasReportScreen> {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: DS.cardSoft.withOpacity(.8)),
+            borderSide: BorderSide(color: DS.cardSoft.withValues(alpha:.8)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -284,19 +281,21 @@ class _NotasReportScreenState extends State<NotasReportScreen> {
                     : () async {
                         try {
                           // Si tienes un loader propio, úsalo aquí. Ejemplo sin loader:
+                          if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Descargando PDF...')),
                           );
 
                           await _reports.descargarNotasPdfDelUsuario();
 
+                          if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('PDF descargado y abierto.'),
                             ),
                           );
                         } catch (e) {
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('No se pudo abrir el PDF: $e'),
@@ -503,7 +502,7 @@ class _HeaderBonitoCompact extends StatelessWidget {
                 label: const Text('Descargar PDF'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: DS.text,
-                  side: BorderSide(color: DS.card.withOpacity(.6)),
+                  side: BorderSide(color: DS.card.withValues(alpha:.6)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -530,7 +529,7 @@ class _HeaderBonitoCompact extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: DS.cardSoft,
-        border: Border.all(color: DS.cardSoft.withOpacity(.8)),
+        border: Border.all(color: DS.cardSoft.withValues(alpha:.8)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -588,7 +587,7 @@ class _FechaPicker extends StatelessWidget {
                         surface: DS.card,
                         onSurface: DS.text,
                       ),
-                      dialogBackgroundColor: DS.bg,
+                      dialogTheme: const DialogThemeData(backgroundColor: DS.bg),
                     ),
                     child: child!,
                   );
@@ -600,7 +599,7 @@ class _FechaPicker extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: DS.cardSoft,
-                border: Border.all(color: DS.cardSoft.withOpacity(.8)),
+                border: Border.all(color: DS.cardSoft.withValues(alpha:.8)),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -648,7 +647,7 @@ class _LeyendaCalificaciones extends StatelessWidget {
                     style: DS.p.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 2),
-                  ...lines.map((l) => Text(l, style: DS.pDim)).toList(),
+                  ...lines.map((l) => Text(l, style: DS.pDim)),
                 ],
               ),
             ),
@@ -795,7 +794,7 @@ class _SeccionBlockDark extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: DS.cardSoft,
-        border: Border.all(color: DS.cardSoft.withOpacity(.9)),
+        border: Border.all(color: DS.cardSoft.withValues(alpha:.9)),
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(10),
@@ -861,7 +860,7 @@ class _TableDark extends StatelessWidget {
       fontSize: 12,
     );
     final cellStyle = DS.p.copyWith(fontSize: 13);
-    final borderColor = DS.cardSoft.withOpacity(.85);
+    final borderColor = DS.cardSoft.withValues(alpha:.85);
 
     return Container(
       decoration: BoxDecoration(

@@ -1,7 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:nic_pre_u/screens/privacy_policy_screen.dart';
 import 'package:nic_pre_u/services/auth_service.dart';
-import 'package:nic_pre_u/shared/widgets/background_shapes.dart';
+import 'package:nic_pre_u/shared/ui/design_system.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,324 +16,704 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
+  static const bool _devAutoLogin = bool.fromEnvironment('NIC_DEV_AUTO_LOGIN');
+  static const String _devLoginCedula = String.fromEnvironment(
+    'NIC_DEV_LOGIN_CEDULA',
+  );
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _cedulaController = TextEditingController();
-
   final _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
+  static const _storage = FlutterSecureStorage();
 
   bool _obscurePassword = true;
-  bool _credentialMode = true; // modo credencial: solo cédula
+  bool _isLoading = false;
+  bool _isGoogleLoading = false;
+  bool _rememberMe = false;
+  bool _policyAccepted = true; // pre-aceptado por defecto
 
-  // Colores del diseño
-  static const Color bg = Color(0xFF0E0F16);
-  static const Color card = Color(0xFF111320);
-  static const Color textPrimary = Color(0xFFEDEDED);
-  static const Color textSecondary = Color(0xFF9EA3B0);
-  static const Color accent = Color(0xFF7C3AED);
-  static const Color inputFill = Color(0xFF15182A);
-  static const double radius = 12;
+  late final AnimationController _ctrl;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
 
-  void _showLoadingDialog(BuildContext context) {
-    showDialog(
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slide = Tween(
+      begin: const Offset(0, 0.06),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _ctrl.forward();
+    _loadSavedCredentials();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _tryDevAutoLogin());
+  }
+
+  /// Precarga el email/cédula si el usuario marcó "Recordar mi cuenta"
+  Future<void> _loadSavedCredentials() async {
+    final remember = await _storage.read(key: 'remember_flag');
+    if (remember == 'true') {
+      final savedEmail = await _storage.read(key: 'remember_email');
+      if (savedEmail != null && savedEmail.isNotEmpty && mounted) {
+        setState(() {
+          _emailController.text = savedEmail;
+          _rememberMe = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _tryDevAutoLogin() async {
+    if (!_devAutoLogin || _devLoginCedula.isEmpty || !mounted) return;
+    final cedula = _devLoginCedula.trim();
+    _emailController.text = cedula;
+    _passwordController.text = cedula;
+    setState(() => _isLoading = true);
+    await _authService.login(
+      cedula,
+      cedula,
+      context,
+      mode: LoginMode.credential,
+      cedula: cedula,
+    );
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  /// Detecta si el input parece ser una cédula ecuatoriana (10 dígitos)
+  bool _isCedula(String value) {
+    return RegExp(r'^\d{10}$').hasMatch(value.trim());
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (!_policyAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Debes aceptar la Política de Privacidad para continuar',
+            style: DS.poppins(size: 14, color: Colors.white),
+          ),
+          backgroundColor: DS.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    HapticFeedback.lightImpact();
+
+    final input = _emailController.text.trim();
+
+    // Guardar o limpiar credenciales según "Recordar mi cuenta"
+    if (_rememberMe) {
+      await _storage.write(key: 'remember_flag', value: 'true');
+      await _storage.write(key: 'remember_email', value: input);
+    } else {
+      await _storage.delete(key: 'remember_flag');
+      await _storage.delete(key: 'remember_email');
+    }
+
+    if (!mounted) return;
+    if (_isCedula(input)) {
+      // Login por cédula (usuarios admin/EC2/local con cédula como credencial)
+      await _authService.login(
+        input,
+        _passwordController.text,
+        context,
+        mode: LoginMode.credential,
+        cedula: input,
+      );
+    } else {
+      // Login clásico por email + contraseña
+      if (!mounted) return;
+      await _authService.login(
+        input,
+        _passwordController.text,
+        context,
+        mode: LoginMode.classic,
+      );
+    }
+
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  Future<void> _submitGoogle() async {
+    if (!_policyAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Debes aceptar la Política de Privacidad para continuar',
+            style: DS.poppins(size: 14, color: Colors.white),
+          ),
+          backgroundColor: DS.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+    setState(() => _isGoogleLoading = true);
+    HapticFeedback.lightImpact();
+    await _authService.loginWithGoogle(context);
+    if (mounted) setState(() => _isGoogleLoading = false);
+  }
+
+  void _showForgotPassword() {
+    final ctrl = TextEditingController();
+    bool sending = false;
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: card,
-        content: Row(
-          children: const [
-            CircularProgressIndicator(),
-            SizedBox(width: 16),
-            Text("Iniciando sesión...", style: TextStyle(color: textPrimary)),
-          ],
+      backgroundColor: DS.card,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) => Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: DS.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Icon(Icons.lock_reset_rounded, size: 40, color: DS.purple),
+              const SizedBox(height: 12),
+              Text(
+                'Recuperar contraseña',
+                style: DS.poppins(
+                  size: 20,
+                  weight: FontWeight.w700,
+                  color: DS.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Ingresa tu email y te enviaremos un enlace.',
+                textAlign: TextAlign.center,
+                style: DS.poppins(size: 14, color: DS.textSecondary),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: ctrl,
+                keyboardType: TextInputType.emailAddress,
+                style: DS.poppins(size: 16, color: DS.textPrimary),
+                decoration: _inputDeco(
+                  hint: 'tu@email.com',
+                  icon: Icons.mail_outline_rounded,
+                ),
+              ),
+              const SizedBox(height: 20),
+              NicButton(
+                text: sending ? 'Enviando...' : 'Enviar enlace',
+                isLoading: sending,
+                color: DS.purple,
+                onPressed: () async {
+                  final email = ctrl.text.trim();
+                  if (email.isEmpty || !email.contains('@')) return;
+                  set(() => sending = true);
+                  try {
+                    final apiUrl = dotenv.env['API_URL'] ?? '';
+                    await http.post(
+                      Uri.parse('$apiUrl/auth/forgot-password'),
+                      headers: {'Content-Type': 'application/json'},
+                      body: json.encode({'email': email}),
+                    );
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Revisa tu correo $email',
+                            style: DS.poppins(size: 14, color: Colors.white),
+                          ),
+                          backgroundColor: DS.green,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          margin: const EdgeInsets.all(16),
+                        ),
+                      );
+                    }
+                  } catch (_) {
+                    if (ctx.mounted) set(() => sending = false);
+                  }
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  InputDecoration _inputDecoration({
-    required String label,
+  InputDecoration _inputDeco({
+    required String hint,
     required IconData icon,
     Widget? suffix,
   }) {
-    const borderSide = BorderSide(color: accent, width: 1.2);
     return InputDecoration(
-      labelText: label,
-      labelStyle: const TextStyle(color: textSecondary, fontSize: 13),
-      prefixIcon: Icon(icon, color: textSecondary),
-      suffixIcon: suffix,
+      hintText: hint,
+      hintStyle: DS.poppins(size: 14, color: DS.textSecondary),
+      prefixIcon: Icon(icon, color: DS.textSecondary, size: 20),
+      suffixIcon: suffix != null
+          ? Padding(padding: const EdgeInsets.only(right: 10), child: suffix)
+          : null,
       filled: true,
-      fillColor: inputFill,
+      fillColor: DS.cardSoft,
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: const BorderSide(color: Color(0xFF2A2E45)),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: DS.divider, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: borderSide,
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: DS.purple, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: const BorderSide(color: Colors.redAccent),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: DS.red),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: const BorderSide(color: Colors.redAccent),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: DS.red, width: 1.5),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final username = _credentialMode
-        ? _cedulaController.text.trim()
-        : _emailController.text.trim();
-
-    final password = _credentialMode
-        ? _cedulaController.text.trim()
-        : _passwordController.text;
-
-    _showLoadingDialog(context);
-
-    await _authService.login(
-      username,
-      password,
-      context,
-      mode: _credentialMode ? LoginMode.credential : LoginMode.classic,
-      cedula: _credentialMode ? _cedulaController.text.trim() : null,
-    );
-
-    if (mounted) Navigator.of(context).pop(); // cerrar loading
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bg,
-      body: Stack(
-        children: [
-          const BackgroundShapes(), // comenta si quieres fondo plano
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Logo
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 24),
-                        child: Image.asset(
-                          'assets/imagenes/logo.png',
-                          height: 64,
-                          colorBlendMode: BlendMode.srcIn,
-                        ),
-                      ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: DS.bg,
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: FadeTransition(
+                  opacity: _fade,
+                  child: SlideTransition(
+                    position: _slide,
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 40),
 
-                      // Título
-                      const Text(
-                        'Iniciar sesión',
-                        style: TextStyle(
-                          color: textPrimary,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
+                        // ── NIC logo ──
+                        Image.asset(
+                          'assets/imagenes/logonic.png',
+                          height: 54,
+                          fit: BoxFit.contain,
+                          semanticLabel: 'NIC Academy',
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Por favor, ingresa tus credenciales\npara poder continuar.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: 13.5,
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 28),
+                        const SizedBox(height: 28),
 
-                      // Card contenedora
-                      Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: card.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFF1D2136)),
-                        ),
-                        child: Form(
-                          key: _formKey,
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 250),
-                            switchInCurve: Curves.easeOut,
-                            switchOutCurve: Curves.easeIn,
-                            transitionBuilder: (child, anim) =>
-                                FadeTransition(opacity: anim, child: child),
-                            child: _credentialMode
-                                ? _buildCedulaForm()
-                                : _buildEmailPasswordForm(),
+                        // ── Title ──
+                        Text(
+                          'Iniciar sesión',
+                          style: DS.poppins(
+                            size: 26,
+                            weight: FontWeight.w700,
+                            color: DS.textPrimary,
                           ),
                         ),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      // Footer link (toggle de modo)
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _credentialMode = !_credentialMode;
-                          });
-                        },
-                        child: Text(
-                          _credentialMode
-                              ? 'Iniciar sesión con email y contraseña'
-                              : 'Iniciar sesión con credencial',
-                          style: const TextStyle(
-                            color: accent,
-                            fontWeight: FontWeight.w700,
+                        const SizedBox(height: 8),
+                        Text(
+                          'Por favor, ingresar su email y contraseña\npara poder continuar.',
+                          textAlign: TextAlign.center,
+                          style: DS.poppins(
+                            size: 14,
+                            color: DS.textSecondary,
+                            height: 1.5,
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 32),
 
-                      const SizedBox(height: 8),
-                    ],
+                        // ── Form ──
+                        Form(key: _formKey, child: _buildLoginForm()),
+
+                        const SizedBox(height: 14),
+
+                        // ── Olvidaste contraseña ──
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: _showForgotPassword,
+                            child: Text(
+                              '¿Olvidaste tu contraseña?',
+                              style: DS.poppins(
+                                size: 13,
+                                weight: FontWeight.w600,
+                                color: DS.purple,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // ── Remember me ──
+                        GestureDetector(
+                          onTap: () =>
+                              setState(() => _rememberMe = !_rememberMe),
+                          child: Row(
+                            children: [
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: _rememberMe
+                                      ? DS.purple
+                                      : Colors.transparent,
+                                  border: Border.all(
+                                    color: _rememberMe
+                                        ? DS.purple
+                                        : DS.textSecondary,
+                                    width: 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                child: _rememberMe
+                                    ? const Icon(
+                                        Icons.check_rounded,
+                                        size: 14,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Recordar mi cuenta',
+                                style: DS.poppins(
+                                  size: 14,
+                                  color: DS.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // ── Política de privacidad ──
+                        _buildPolicyCheckbox(),
+
+                        const SizedBox(height: 24),
+
+                        // ── Aceptar button ──
+                        NicButton(
+                          text: 'Aceptar',
+                          isLoading: _isLoading,
+                          color: DS.purple,
+                          onPressed: _submit,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // ── Divider ──
+                        Row(
+                          children: [
+                            const Expanded(child: Divider(color: DS.divider)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                              child: Text(
+                                'o iniciar sesión con',
+                                style: DS.poppins(
+                                  size: 12,
+                                  color: DS.textSecondary,
+                                ),
+                              ),
+                            ),
+                            const Expanded(child: Divider(color: DS.divider)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // ── Google sign-in ──
+                        _SocialButton(
+                          label: 'Continuar con Google',
+                          icon: Icons.g_mobiledata_rounded,
+                          isLoading: _isGoogleLoading,
+                          onTap: _submitGoogle,
+                        ),
+                        const SizedBox(height: 28),
+
+                        // ── Crear cuenta ──
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '¿No tienes una cuenta? ',
+                              style: DS.poppins(
+                                size: 14,
+                                color: DS.textSecondary,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => context.push('/register'),
+                              child: Text(
+                                'Crear cuenta',
+                                style: DS.poppins(
+                                  size: 14,
+                                  weight: FontWeight.w700,
+                                  color: DS.purple,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // --- Form clásico: Email + Password ---
-  Widget _buildEmailPasswordForm() {
+  // ─── Formulario unificado (email o cédula) ────────────────────────────────
+
+  Widget _buildLoginForm() {
     return Column(
-      key: const ValueKey('form_email_password'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Ingresa tu email',
-          style: TextStyle(color: textSecondary, fontSize: 12.5),
+        Text(
+          'Email o número de cédula',
+          style: DS.poppins(
+            size: 13,
+            weight: FontWeight.w600,
+            color: DS.textSecondary,
+          ),
         ),
         const SizedBox(height: 8),
         TextFormField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
           textInputAction: TextInputAction.next,
-          style: const TextStyle(color: textPrimary),
-          decoration: _inputDecoration(
-            label: 'email@example.com',
-            icon: Icons.mail_outline,
+          style: DS.poppins(size: 16, color: DS.textPrimary),
+          decoration: _inputDeco(
+            hint: 'usuario@email.com o 10 dígitos',
+            icon: Icons.person_outline_rounded,
           ),
           validator: (v) {
-            if (_credentialMode) return null;
-            if (v == null || v.trim().isEmpty) return 'Ingresa tu email';
-            final ok = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(v.trim());
-            return ok ? null : 'Email inválido';
+            final val = (v ?? '').trim();
+            if (val.isEmpty) return 'Ingresa tu email o cédula';
+            // Acepta email válido o cédula de 10 dígitos
+            final isEmail = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(val);
+            final isCedula = RegExp(r'^\d{10}$').hasMatch(val);
+            if (!isEmail && !isCedula) {
+              return 'Ingresa un email válido o cédula de 10 dígitos';
+            }
+            return null;
           },
         ),
         const SizedBox(height: 16),
-        const Text(
-          'Ingresar contraseña',
-          style: TextStyle(color: textSecondary, fontSize: 12.5),
+        Text(
+          'Contraseña',
+          style: DS.poppins(
+            size: 13,
+            weight: FontWeight.w600,
+            color: DS.textSecondary,
+          ),
         ),
         const SizedBox(height: 8),
         TextFormField(
           controller: _passwordController,
           obscureText: _obscurePassword,
-          style: const TextStyle(color: textPrimary),
-          decoration: _inputDecoration(
-            label: '••••••••',
-            icon: Icons.lock_outline,
-            suffix: IconButton(
-              onPressed: () => setState(() {
-                _obscurePassword = !_obscurePassword;
-              }),
-              icon: const Icon(Icons.visibility, color: textSecondary),
-            ),
-          ),
-          validator: (v) {
-            if (_credentialMode) return null;
-            if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
-            return null;
-          },
-        ),
-        const SizedBox(height: 20),
-        SizedBox(
-          height: 48,
-          child: ElevatedButton(
-            onPressed: _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(radius),
+          style: DS.poppins(size: 16, color: DS.textPrimary),
+          decoration: _inputDeco(
+            hint: '••••••••••',
+            icon: Icons.lock_outline_rounded,
+            suffix: GestureDetector(
+              onTap: () => setState(() => _obscurePassword = !_obscurePassword),
+              child: Icon(
+                _obscurePassword
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
+                color: DS.textSecondary,
+                size: 20,
               ),
             ),
-            child: const Text(
-              'INICIAR SESIÓN',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
           ),
+          validator: (v) =>
+              (v == null || v.isEmpty) ? 'Ingresa tu contraseña' : null,
         ),
       ],
     );
   }
 
-  // --- Form credencial: solo Cédula ---
-  Widget _buildCedulaForm() {
-    return Column(
-      key: const ValueKey('form_credencial'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          'Ingresa tu cédula',
-          style: TextStyle(color: textSecondary, fontSize: 12.5),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _cedulaController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          style: const TextStyle(color: textPrimary),
-          decoration: _inputDecoration(
-            label: 'Cédula',
-            icon: Icons.badge_outlined,
-          ),
-          validator: (v) {
-            if (!_credentialMode) return null;
-            final val = (v ?? '').trim();
-            if (val.isEmpty) return 'Ingresa tu cédula';
-            if (val.length != 10) return 'Cédula inválida (10 dígitos)';
-            return null;
-          },
-        ),
-        const SizedBox(height: 20),
-        SizedBox(
-          height: 48,
-          child: ElevatedButton(
-            onPressed: _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(radius),
+  // ─── Checkbox política de privacidad ─────────────────────────────────────
+
+  Widget _buildPolicyCheckbox() {
+    return GestureDetector(
+      onTap: () => setState(() => _policyAccepted = !_policyAccepted),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: _policyAccepted ? DS.purple : Colors.transparent,
+                border: Border.all(
+                  color: _policyAccepted ? DS.purple : DS.textSecondary,
+                  width: 1.5,
+                ),
+                borderRadius: BorderRadius.circular(5),
               ),
-            ),
-            child: const Text(
-              'Aceptar',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              child: _policyAccepted
+                  ? const Icon(
+                      Icons.check_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    )
+                  : null,
             ),
           ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Wrap(
+              children: [
+                Text(
+                  'Acepto la ',
+                  style: DS.poppins(size: 13, color: DS.textSecondary),
+                ),
+                GestureDetector(
+                  onTap: () => PrivacyPolicyScreen.show(context),
+                  child: Text(
+                    'Política de Privacidad y Protección de Datos',
+                    style: DS.poppins(
+                      size: 13,
+                      weight: FontWeight.w600,
+                      color: DS.purple,
+                    ),
+                  ),
+                ),
+                Text(
+                  ' de NIC Academy (LOPDP Ecuador · GDPR)',
+                  style: DS.poppins(size: 13, color: DS.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══ Social Button ════════════════════════════════════════════════════════
+class _SocialButton extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isLoading;
+  const _SocialButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.isLoading = false,
+  });
+
+  @override
+  State<_SocialButton> createState() => _SocialButtonState();
+}
+
+class _SocialButtonState extends State<_SocialButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: DS.card,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: DS.divider),
+          ),
+          child: Center(
+            child: widget.isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: DS.purple,
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(widget.icon, color: DS.textSecondary, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        widget.label,
+                        style: DS.poppins(
+                          size: 12,
+                          weight: FontWeight.w600,
+                          color: DS.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
         ),
-      ],
+      ),
     );
   }
 }

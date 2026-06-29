@@ -8,7 +8,7 @@ class GlowingButton extends StatefulWidget {
   const GlowingButton({super.key, required this.onTap, required this.icon, required this.text});
 
   @override
-  _GlowingButtonState createState() => _GlowingButtonState();
+  State<GlowingButton> createState() => _GlowingButtonState();
 }
 
 class _GlowingButtonState extends State<GlowingButton> with SingleTickerProviderStateMixin {
@@ -48,7 +48,7 @@ class _GlowingButtonState extends State<GlowingButton> with SingleTickerProvider
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF672BB6).withOpacity(_glowAnimation.value),
+                    color: const Color(0xFF672BB6).withValues(alpha: _glowAnimation.value),
                     blurRadius: 20,
                     spreadRadius: 4,
                   ),

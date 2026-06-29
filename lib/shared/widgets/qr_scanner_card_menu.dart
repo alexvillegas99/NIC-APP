@@ -14,11 +14,11 @@ class QRScannerCard extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: item["highlight"] == true ? Colors.deepPurple.withOpacity(0.1) : Colors.white.withOpacity(0.9),
+            color: item["highlight"] == true ? Colors.deepPurple.withValues(alpha:0.1) : Colors.white.withValues(alpha:0.9),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha:0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -32,7 +32,7 @@ class QRScannerCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.deepPurple.withOpacity(0.2),
+                    color: Colors.deepPurple.withValues(alpha:0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(item['icon'], size: 40, color: const Color(0xFF672BB6)),

@@ -130,9 +130,9 @@ class _AsistenciaReportScreenState extends State<AsistenciaReportScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(.15),
+        color: color.withValues(alpha: .15),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(.5)),
+        border: Border.all(color: color.withValues(alpha: .5)),
       ),
       child: Text(
         asistio ? 'Asistió' : 'Faltó',
@@ -147,7 +147,7 @@ class _AsistenciaReportScreenState extends State<AsistenciaReportScreen> {
 
   /// ✅ Construye lista final (asistencias + faltas) SIN duplicar lógica
   List<DiaItem> _buildItems(AsistenciaReporte data) {
-    final registros = data.registros ?? <AsistenciaRegistro>[];
+    final registros = data.registros;
     final faltas = (data.faltas?.diasFaltados ?? const <String>[]).toSet();
 
     final regPorFecha = <String, AsistenciaRegistro>{
@@ -335,10 +335,10 @@ class _CursoSelectorCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: DS.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: DS.primary.withOpacity(.55), width: 1.2),
+          border: Border.all(color: DS.primary.withValues(alpha: .55), width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(.25),
+              color: Colors.black.withValues(alpha: .25),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -358,9 +358,9 @@ class _CursoSelectorCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: DS.primary.withOpacity(.14),
+                      color: DS.primary.withValues(alpha: .14),
                       borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: DS.primary.withOpacity(.35)),
+                      border: Border.all(color: DS.primary.withValues(alpha: .35)),
                     ),
                     child: Text(
                       '${cursos.length} cursos',
@@ -379,7 +379,7 @@ class _CursoSelectorCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: DS.cardSoft,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: DS.cardSoft.withOpacity(.9)),
+                  border: Border.all(color: DS.cardSoft.withValues(alpha: .9)),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: DropdownButtonHideUnderline(
@@ -540,7 +540,7 @@ class _HeaderAsistencia extends StatelessWidget {
                 label: const Text('Descargar PDF'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: DS.text,
-                  side: BorderSide(color: DS.card.withOpacity(.6)),
+                  side: BorderSide(color: DS.card.withValues(alpha: .6)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -560,7 +560,7 @@ class _HeaderAsistencia extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: DS.cardSoft,
-        border: Border.all(color: DS.cardSoft.withOpacity(.8)),
+        border: Border.all(color: DS.cardSoft.withValues(alpha: .8)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -18,12 +18,16 @@ class QRService {
           await _authService.getUser(); // 🔹 Obtener usuario actual
       if (userData == null) return false;
 
+      final token = await _authService.getToken();
       final response = await http.post(
         Uri.parse('$apiUrl/asistentes/generate-qr-app'),
-        headers: {"Content-Type": "application/json"},
-        body: json.encode(userData), // 🔹 Enviar usuario a la API
+        headers: {
+          "Content-Type": "application/json",
+          if (token != null && token.isNotEmpty) "Authorization": "Bearer $token",
+        },
+        body: json.encode(userData),
       );
-      print('Response: ${response.body}');
+      debugPrint('Response: ${response.body}');
 
       final Map<String, dynamic> responseData = json.decode(response.body);
       final String? imageBase64 =
@@ -36,10 +40,10 @@ class QRService {
         return true;
       }
 
-      print('Error en la generación del QR: ${response.body}');
+      debugPrint('Error en la generación del QR: ${response.body}');
       return false;
     } catch (e) {
-      print('Error en generateAndSaveQR: $e');
+      debugPrint('Error en generateAndSaveQR: $e');
       return false;
     }
   }

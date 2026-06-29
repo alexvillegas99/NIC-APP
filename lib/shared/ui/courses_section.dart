@@ -1,4 +1,3 @@
-// lib/features/courses/ui/courses_section.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nic_pre_u/services/course_service.dart';
@@ -24,13 +23,10 @@ class _CoursesSectionState extends State<CoursesSection> {
   @override
   void initState() {
     super.initState();
-  _future = widget.service.fetchCoursesWithGradesByUsername()
-  ..then((list) async {
-    await widget.service.saveCoursesWithGrades(list); // 👈 guarda para después
-    //validar si se guardar
-   
-  });
-
+    _future = widget.service.fetchCoursesWithGradesByUsername()
+      ..then((list) async {
+        await widget.service.saveCoursesWithGrades(list);
+      });
   }
 
   @override
@@ -45,7 +41,8 @@ class _CoursesSectionState extends State<CoursesSection> {
           }
           if (snap.hasError) {
             return _Error(onRetry: () {
-              setState(() => _future = widget.service.fetchCoursesWithGradesByUsername());
+              setState(() =>
+                  _future = widget.service.fetchCoursesWithGradesByUsername());
             });
           }
           final List<dynamic> courses = snap.data ?? [];
@@ -60,21 +57,45 @@ class _CoursesSectionState extends State<CoursesSection> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Tus cursos/clases', style: DS.h2),
+                  Text(
+                    'Tus cursos',
+                    style: DS.poppins(
+                      size: 18,
+                      weight: FontWeight.w700,
+                      color: DS.textPrimary,
+                    ),
+                  ),
                   InkWell(
                     onTap: () => context.push('/home/courses'),
-                    child: Row(
-                      children: [
-                        Text('Ver todos', style: DS.p.copyWith(color: DS.primary)),
-                        const SizedBox(width: 4),
-                        Icon(Icons.arrow_forward, color: DS.primary, size: 16),
-                      ],
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Ver todos',
+                            style: DS.poppins(
+                              size: 14,
+                              weight: FontWeight.w600,
+                              color: DS.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: DS.primary,
+                            size: 16,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-
               SizedBox(
                 height: cardHeight,
                 child: ListView.separated(
@@ -83,11 +104,15 @@ class _CoursesSectionState extends State<CoursesSection> {
                   itemCount: preview.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (_, i) {
-                    final Map<String, dynamic> c = (preview[i] as Map).cast<String, dynamic>();
+                    final Map<String, dynamic> c =
+                        (preview[i] as Map).cast<String, dynamic>();
                     return _CourseCard(
                       course: c,
                       width: _cardWidth(context),
-                      onTap: (course) => context.push('/home/courses/${course['id']}', extra: course),
+                      onTap: (course) => context.push(
+                        '/home/courses/${course['id']}',
+                        extra: course,
+                      ),
                     );
                   },
                 ),
@@ -105,6 +130,10 @@ class _CoursesSectionState extends State<CoursesSection> {
     return target.clamp(220.0, 280.0);
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Course Card
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _CourseCard extends StatelessWidget {
   final Map<String, dynamic> course;
@@ -125,38 +154,84 @@ class _CourseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String title = (course['fullname'] as String?) ?? '';
     final String? img = (course['image'] as String?);
-    final String safeImg = (img != null && img.trim().isNotEmpty) ? img : _fallbackArts[0];
+    final String safeImg =
+        (img != null && img.trim().isNotEmpty) ? img : _fallbackArts[0];
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
       onTap: () => onTap(course),
-      child: Ink(
+      child: Container(
         width: width,
-        decoration: DS.cardDeco().copyWith(
-          borderRadius: BorderRadius.circular(12),
+        decoration: BoxDecoration(
+          color: DS.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: DS.divider),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 👇 FLEXIBLE: ocupa el alto restante para no desbordar
             Expanded(
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: Image.network(
-                  safeImg,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(color: Colors.white10),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      safeImg,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: DS.cardSoft,
+                        child: Center(
+                          child: Icon(
+                            Icons.school_rounded,
+                            size: 40,
+                            color: DS.textSecondary.withValues(alpha: 0.4),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Subtle gradient overlay at bottom of image
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 30,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.05),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            // Texto con padding pequeño (reduce 1–2 px)
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
               child: Text(
                 title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: DS.p.copyWith(fontWeight: FontWeight.w700),
+                style: DS.poppins(
+                  size: 14,
+                  weight: FontWeight.w600,
+                  color: DS.textPrimary,
+                ),
               ),
             ),
           ],
@@ -166,8 +241,35 @@ class _CourseCard extends StatelessWidget {
   }
 }
 
-class _SkeletonHorizontal extends StatelessWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// Skeleton Loader
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SkeletonHorizontal extends StatefulWidget {
   const _SkeletonHorizontal();
+
+  @override
+  State<_SkeletonHorizontal> createState() => _SkeletonHorizontalState();
+}
+
+class _SkeletonHorizontalState extends State<_SkeletonHorizontal>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _shimmerCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmerCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -181,8 +283,8 @@ class _SkeletonHorizontal extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(width: 160, height: 16, color: Colors.white10),
-            Container(width: 80, height: 14, color: Colors.white10),
+            _shimmerBox(160, 18),
+            _shimmerBox(80, 16),
           ],
         ),
         const SizedBox(height: 12),
@@ -190,18 +292,64 @@ class _SkeletonHorizontal extends StatelessWidget {
           height: h,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: 4,
+            itemCount: 3,
             separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (_, __) => Container(
-              width: w,
-              decoration: DS.cardDeco().copyWith(borderRadius: BorderRadius.circular(12)),
+            itemBuilder: (_, __) => AnimatedBuilder(
+              animation: _shimmerCtrl,
+              builder: (context, child) {
+                return Container(
+                  width: w,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      begin: Alignment(-1.0 + 2.0 * _shimmerCtrl.value, 0),
+                      end: Alignment(1.0 + 2.0 * _shimmerCtrl.value, 0),
+                      colors: const [
+                        Color(0xFFEEEEEE),
+                        Color(0xFFF5F5F5),
+                        Color(0xFFEEEEEE),
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
       ],
     );
   }
+
+  Widget _shimmerBox(double width, double height) {
+    return AnimatedBuilder(
+      animation: _shimmerCtrl,
+      builder: (context, child) {
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            gradient: LinearGradient(
+              begin: Alignment(-1.0 + 2.0 * _shimmerCtrl.value, 0),
+              end: Alignment(1.0 + 2.0 * _shimmerCtrl.value, 0),
+              colors: const [
+                Color(0xFFEEEEEE),
+                Color(0xFFF5F5F5),
+                Color(0xFFEEEEEE),
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Error Widget
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _Error extends StatelessWidget {
   final VoidCallback onRetry;
@@ -211,9 +359,33 @@ class _Error extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text('No se pudieron cargar los cursos', style: DS.p),
+        Icon(
+          Icons.cloud_off_rounded,
+          size: 40,
+          color: DS.textSecondary.withValues(alpha: 0.4),
+        ),
         const SizedBox(height: 8),
-        TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+        Text(
+          'No se pudieron cargar los cursos',
+          style: DS.poppins(
+            size: 14,
+            weight: FontWeight.w500,
+            color: DS.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextButton.icon(
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+          label: Text(
+            'Reintentar',
+            style: DS.poppins(
+              size: 14,
+              weight: FontWeight.w600,
+              color: DS.primary,
+            ),
+          ),
+        ),
       ],
     );
   }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'auth_service.dart';
@@ -6,6 +7,14 @@ import 'auth_service.dart';
 class EvaluacionesService {
   final String baseUrl = dotenv.env['API_URL'] ?? '';
   final AuthService _auth = AuthService();
+
+  Future<Map<String, String>> _headers() async {
+    final token = await _auth.getToken();
+    return {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
 
   /////////////////////////////////////////////////////////////
   /// 🔹 Verifica si existen evaluaciones activas hoy
@@ -19,7 +28,7 @@ class EvaluacionesService {
     try {
       final response = await http.get(
         Uri.parse("$baseUrl/evaluaciones/activas/hoy"),
-        headers: {"Content-Type": "application/json"},
+        headers: await _headers(),
       );
 
       if (response.statusCode == 200) {
@@ -29,7 +38,7 @@ class EvaluacionesService {
 
       return false;
     } catch (e) {
-      print("Error obteniendo evaluaciones activas: $e");
+      debugPrint("Error obteniendo evaluaciones activas: $e");
       return false;
     }
   }
@@ -67,18 +76,18 @@ class EvaluacionesService {
 
       final response = await http.get(
         uri,
-        headers: {"Content-Type": "application/json"},
+        headers: await _headers(),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print("Estado estudiante: ${response.body}");
+        debugPrint("Estado estudiante: ${response.body}");
         return jsonDecode(response.body);
       }
 
-      print("Error estado estudiante: ${response.body}");
+      debugPrint("Error estado estudiante: ${response.body}");
       return [];
     } catch (e) {
-      print("Error en obtenerEstadoEstudiante: $e");
+      debugPrint("Error en obtenerEstadoEstudiante: $e");
       return [];
     }
   }
@@ -91,7 +100,7 @@ class EvaluacionesService {
     try {
       final response = await http.get(
         Uri.parse("$baseUrl/evaluaciones/activas/hoy"),
-        headers: {"Content-Type": "application/json"},
+        headers: await _headers(),
       );
 
       if (response.statusCode == 200) {
@@ -100,7 +109,7 @@ class EvaluacionesService {
 
       return [];
     } catch (e) {
-      print("Error obteniendo evaluaciones activas: $e");
+      debugPrint("Error obteniendo evaluaciones activas: $e");
       return [];
     }
   }
@@ -120,9 +129,7 @@ Future<void> enviarEvaluacionProfesor({
 }) async {
   final response = await http.post(
     Uri.parse("$baseUrl/evaluaciones/calificaciones"),
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: await _headers(),
     body: jsonEncode({
       "evaluacionId": evaluacionId,
       "profesorNombre": profesor,

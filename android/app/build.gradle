@@ -9,18 +9,26 @@ def keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
+def hasReleaseKeystore =
+        keystoreProperties['storeFile'] &&
+        keystoreProperties['keyAlias'] &&
+        keystoreProperties['keyPassword'] &&
+        keystoreProperties['storePassword']
+def isReleaseTask = gradle.startParameter.taskNames.any {
+    it.toLowerCase().contains("release") || it.toLowerCase().contains("bundle")
+}
 
 android {
     namespace "com.pixelsmart.nic_pre_u"
-    compileSdkVersion 35
+    compileSdkVersion 36
     ndkVersion "28.0.12433566"
 
     defaultConfig {
         applicationId "com.pixelsmart.nic_pre_u"
         minSdkVersion 24
         targetSdkVersion 35
-        versionCode 21 //incrementar para cad publicacion
-        versionName '1.1.6' //incrementar por ejemplo el 1.0.+
+        versionCode 24 //incrementar para cada publicacion
+        versionName '1.1.9' //incrementar por ejemplo el 1.0.+
     }
 
     compileOptions {
@@ -34,17 +42,23 @@ android {
     }
 
     signingConfigs {
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword']
+        if (hasReleaseKeystore) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (hasReleaseKeystore) {
+                signingConfig signingConfigs.release
+            } else if (isReleaseTask) {
+                throw new GradleException("Falta android/key.properties con storeFile, keyAlias, keyPassword y storePassword para generar el release de Play Console.")
+            }
         }
     }
 }
@@ -71,5 +85,3 @@ configurations.all {
         }
     }
 }
-
-

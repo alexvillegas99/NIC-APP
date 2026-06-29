@@ -1,26 +1,44 @@
 {
   "project_info": {
-    "project_number": "407188672000",
-    "project_id": "cuponera-5f06a",
-    "storage_bucket": "cuponera-5f06a.firebasestorage.app"
+    "project_number": "402789935416",
+    "project_id": "nic-app-c4830",
+    "storage_bucket": "nic-app-c4830.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:407188672000:android:dd8b4f60eba26871d8d2e5",
+        "mobilesdk_app_id": "1:402789935416:android:73d6aa125f3d01fa3ab9cd",
         "android_client_info": {
           "package_name": "com.pixelsmart.nic_pre_u"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "402789935416-2c69b9ej95d274v8vvfq992guthplmmt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pixelsmart.nic_pre_u",
+            "certificate_hash": "07a02f768a47486c3ab8ced9bf77e2bb199b00e2"
+          }
+        },
+        {
+          "client_id": "402789935416-o80o79gmnafglpe5sdihctaljm4svrkb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyDnfwU06qTLEAnXM4GTxKXhCUQMbO8I1VQ"
+          "current_key": "AIzaSyD1NDAzEchGQFhJZqhkn7sGoFXTgYfF41k"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "402789935416-o80o79gmnafglpe5sdihctaljm4svrkb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

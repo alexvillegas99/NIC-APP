@@ -1,7 +1,5 @@
-import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
@@ -15,8 +13,8 @@ Future<String> debugDownloadPdf(Uri url, {String filename = 'asistencia_debug.pd
 
   // 1) Petición
   final res = await http.get(url);
-  print('DEBUG PDF ▶️ GET $url');
-  print('DEBUG PDF ▶️ status: ${res.statusCode}');
+  debugPrint('DEBUG PDF ▶️ GET $url');
+  debugPrint('DEBUG PDF ▶️ status: ${res.statusCode}');
 
   // Headers (en backend deberían estar estos)
   final hdrs = Map<String, String>.from(res.headers);
@@ -28,18 +26,18 @@ Future<String> debugDownloadPdf(Uri url, {String filename = 'asistencia_debug.pd
   ];
   for (final h in interesting) {
     if (hdrs.containsKey(h)) {
-      print('DEBUG PDF ▶️ header $h: ${hdrs[h]}');
+      debugPrint('DEBUG PDF ▶️ header $h: ${hdrs[h]}');
     }
   }
 
   if (res.statusCode != 200) {
-    print('DEBUG PDF ❌ body (text): ${res.body}');
+    debugPrint('DEBUG PDF ❌ body (text): ${res.body}');
     throw Exception('HTTP ${res.statusCode}');
   }
 
   final bytes = res.bodyBytes;
-  print('DEBUG PDF ▶️ bytes length: ${bytes.length}');
-  print('DEBUG PDF ▶️ first 8 bytes hex: ${_hex(bytes, 8)}');
+  debugPrint('DEBUG PDF ▶️ bytes length: ${bytes.length}');
+  debugPrint('DEBUG PDF ▶️ first 8 bytes hex: ${_hex(bytes, 8)}');
 
   // 2) Verificación de firma PDF
   // Los PDFs inician con "%PDF"
@@ -48,13 +46,13 @@ Future<String> debugDownloadPdf(Uri url, {String filename = 'asistencia_debug.pd
       bytes[1] == 0x50 && // P
       bytes[2] == 0x44 && // D
       bytes[3] == 0x46;   // F
-  print('DEBUG PDF ▶️ startsWith %PDF ? $isPdf');
+  debugPrint('DEBUG PDF ▶️ startsWith %PDF ? $isPdf');
 
   // 3) Guardar local
   final dir = await getApplicationDocumentsDirectory();
   final file = File('${dir.path}/$filename');
   await file.writeAsBytes(bytes, flush: true);
-  print('DEBUG PDF ▶️ saved at: ${file.path}');
+  debugPrint('DEBUG PDF ▶️ saved at: ${file.path}');
 
   return file.path;
 }

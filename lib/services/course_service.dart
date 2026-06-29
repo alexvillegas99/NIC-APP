@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:nic_pre_u/data/course.dart';
-import 'package:nic_pre_u/data/course_with_grades.dart';
 import 'package:nic_pre_u/services/auth_service.dart';
+import 'package:nic_pre_u/services/connectivity_service.dart';
+import 'package:nic_pre_u/services/local_cache.dart';
 import 'package:nic_pre_u/shared/utils/file_downloader.dart';
 
 class CourseService {
@@ -16,13 +18,21 @@ class CourseService {
 
   CourseService({this.headers = const {}});
 
-  /// Debe terminar en /api (ej: http://10.0.2.2:4000/api)
   String get baseUrl => dotenv.env['API_URL'] ?? '';
+
+  Future<Map<String, String>> _authHeaders() async {
+    final token = await _authService.getToken();
+    return {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      ...headers,
+    };
+  }
 
   // (sigue disponible si lo usabas)
   Future<List<Course>> fetchCourses() async {
     final uri = Uri.parse('$baseUrl/courses');
-    final res = await http.get(uri, headers: headers);
+    final res = await http.get(uri, headers: await _authHeaders());
     if (res.statusCode == 200) {
       final body = json.decode(res.body);
       final list = (body as List).cast<Map<String, dynamic>>();
@@ -44,7 +54,7 @@ Future<List<Map<String, dynamic>>> getActiveCourses() async {
         : '$baseUrl/cursos?estado=active',
   );
 
-  final res = await http.get(uri).timeout(const Duration(seconds: 10));
+  final res = await http.get(uri, headers: await _authHeaders()).timeout(const Duration(seconds: 10));
 
   if (res.statusCode != 200) {
     throw Exception('Error ${res.statusCode} al obtener cursos activos');
@@ -60,34 +70,50 @@ Future<List<Map<String, dynamic>>> getActiveCourses() async {
   Future<List<dynamic>> fetchCoursesWithGradesByUsername() async {
     final userData = await _authService.getUser();
     final username = (userData?['cedula'] ?? '').toString();
-    if (username.isEmpty) {
-      return [];
-    }
+    if (username.isEmpty) return [];
 
-    final uri = Uri.parse(
-      '$baseUrl/moodle/courses/with-gradesv2?username=$username',
-    );
+    final cacheKey = 'moodle_courses_$username';
 
-    final res = await http.get(uri, headers: headers);
-
-    // ✅ Manejo de 400 "Usuario no encontrado"
-    if (res.statusCode == 400) {
-      final body = json.decode(res.body);
-      if (body is Map && body['message'] == 'Usuario no encontrado') {
-        return []; // Devuelve array vacío sin lanzar error
+    Future<List<dynamic>> fromNetwork() async {
+      final uri = Uri.parse(
+        '$baseUrl/moodle/courses/with-gradesv2?username=$username',
+      );
+      final res = await http.get(uri, headers: await _authHeaders())
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 400) {
+        final body = json.decode(res.body);
+        if (body is Map && body['message'] == 'Usuario no encontrado') {
+          return [];
+        }
       }
+      if (res.statusCode != 200) {
+        throw Exception('Error ${res.statusCode} al obtener cursos con notas');
+      }
+      final body = json.decode(res.body);
+      List<dynamic> result;
+      if (body is List) {
+        result = body;
+      } else if (body is Map && body['courses'] is List) {
+        result = body['courses'] as List;
+      } else {
+        throw Exception('Formato de respuesta no esperado');
+      }
+      await LocalCache.set(cacheKey, result);
+      return result;
     }
 
-    if (res.statusCode != 200) {
-      throw Exception('Error ${res.statusCode} al obtener cursos con notas');
+    final online = await ConnectivityService.instance.check();
+    if (online) {
+      try {
+        return await fromNetwork();
+      } catch (_) {
+        final cached = await LocalCache.get(cacheKey);
+        return cached is List ? cached : [];
+      }
+    } else {
+      final cached = await LocalCache.get(cacheKey);
+      return cached is List ? cached : [];
     }
-
-    final body = json.decode(res.body);
-
-    if (body is List) return body;
-    if (body is Map && body['courses'] is List) return body['courses'] as List;
-
-    throw Exception('Formato de respuesta no esperado');
   }
 
   String _coursesKey(String username) => 'courses_with_grades_$username';
@@ -105,7 +131,7 @@ Future<List<Map<String, dynamic>>> getActiveCourses() async {
 
     // Debug opcional
     final saved = await _storage.read(key: _coursesKey(cedula));
-    print('Cursos+notas guardados (${courses.length}): ${saved != null}');
+    debugPrint('Cursos+notas guardados (${courses.length}): ${saved != null}');
   }
 
   // --- 🔹 Leer lista guardada (para "Ver todos", etc.) ---

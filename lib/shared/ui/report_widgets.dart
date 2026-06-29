@@ -102,7 +102,7 @@ class PlaceholderCard extends StatelessWidget {
 
 BoxDecoration reportCardDeco() {
   return BoxDecoration(
-    color: const Color(0xFF111320).withOpacity(0.85),
+    color: const Color(0xFF111320).withValues(alpha:0.85),
     borderRadius: BorderRadius.circular(16),
     border: Border.all(color: const Color(0xFF1D2136)),
   );
@@ -145,7 +145,7 @@ Widget courseHeader(Map<String, dynamic> curso, Map<String, dynamic> resumen) {
                 children: [
                   Chip(
                     label: Text(estado.isEmpty ? '—' : estado),
-                    backgroundColor: estado == 'Activo' ? Colors.green.withOpacity(.15) : Colors.grey.withOpacity(.2),
+                    backgroundColor: estado == 'Activo' ? Colors.green.withValues(alpha:.15) : Colors.grey.withValues(alpha:.2),
                     labelStyle: TextStyle(color: estado == 'Activo' ? Colors.green : Colors.grey),
                     visualDensity: VisualDensity.compact,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -226,9 +226,9 @@ class DayAttendanceTile extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: base.withOpacity(.15),
+                  color: base.withValues(alpha:.15),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: base.withOpacity(.35)),
+                  border: Border.all(color: base.withValues(alpha:.35)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -328,8 +328,8 @@ String formatCourseName(String? raw) {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: estado == 'Activo'
-                      ? Colors.green.withOpacity(.15)
-                      : Colors.grey.withOpacity(.2),
+                      ? Colors.green.withValues(alpha:.15)
+                      : Colors.grey.withValues(alpha:.2),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -360,7 +360,7 @@ String formatCourseName(String? raw) {
           if (porcentajeAsistencia != null) ...[
             const SizedBox(height: 6),
             Text(
-              'Asistencia: ${porcentajeAsistencia}%',
+              'Asistencia: $porcentajeAsistencia%',
               style: const TextStyle(color: Color(0xFF9EA3B0), fontSize: 12.5),
             ),
           ],

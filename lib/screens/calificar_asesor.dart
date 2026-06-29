@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nic_pre_u/services/rating_service.dart';
 import 'package:nic_pre_u/shared/ui/design_system.dart';
+import 'package:nic_pre_u/shared/widgets/nic_header.dart';
+import 'package:nic_pre_u/shared/widgets/glass_card.dart';
 import 'package:nic_pre_u/shared/widgets/background_shapes.dart';
 import 'package:nic_pre_u/services/auth_service.dart';
 
@@ -41,8 +43,16 @@ class _CalificarAtencionScreenState extends State<CalificarAtencionScreen> {
       'label': 'Muy satisfecho',
       'asset': 'assets/imagenes/Asset 2.png',
     },
-    {'value': 4, 'label': 'Satisfecho', 'asset': 'assets/imagenes/Asset 3.png'},
-    {'value': 3, 'label': 'Neutral', 'asset': 'assets/imagenes/Asset 4.png'},
+    {
+      'value': 4,
+      'label': 'Satisfecho',
+      'asset': 'assets/imagenes/Asset 3.png',
+    },
+    {
+      'value': 3,
+      'label': 'Neutral',
+      'asset': 'assets/imagenes/Asset 4.png',
+    },
     {
       'value': 2,
       'label': 'Insatisfecho',
@@ -65,248 +75,315 @@ class _CalificarAtencionScreenState extends State<CalificarAtencionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: DS.bg,
-
-      appBar: AppBar(
-        backgroundColor: DS.bg,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'NIC',
-          style: TextStyle(
-            color: Color(0xFF7C3AED),
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-
       body: Stack(
         children: [
           const BackgroundShapes(),
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _headerCard(),
-                  const SizedBox(height: 20),
-                  _ratingCard(),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ================= HEADER =================
-
-  Widget _headerCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111320),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Calificación de atención',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          SizedBox(height: 6),
-          Text(
-            'Evalúe la atención recibida por el asesor',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ================= CARD CALIFICACIÓN =================
-  Widget _ratingCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111320),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            '¿Cómo calificas la atención recibida?',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 24),
-
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Column(
             children: [
-              // ===== OPCIONES =====
+              NicHeader(
+                title: 'Calificar atención',
+                color: DS.green,
+                onBack: () => Navigator.pop(context),
+              ),
               Expanded(
-                child: Column(
-                  children: _opciones.map((opt) {
-                    final selected = calificacion == opt['value'];
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Header info card
+                      NicCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    gradient: DS.nicGradient,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.support_agent_rounded,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Calificacion de atencion',
+                                        style: DS.poppins(
+                                          size: 17,
+                                          weight: FontWeight.w700,
+                                          color: DS.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Evalue la atencion recibida por el asesor',
+                                        style: DS.poppins(
+                                          size: 13,
+                                          weight: FontWeight.w400,
+                                          color: DS.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
 
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: InkWell(
-                        onTap: () =>
-                            setState(() => calificacion = opt['value'] as int),
-                        borderRadius: BorderRadius.circular(30),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1F2937),
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(
-                              color: selected
-                                  ? const Color(0xFF7C3AED)
-                                  : Colors.white24,
-                              width: selected ? 2 : 1,
+                      const SizedBox(height: 24),
+
+                      // Question
+                      Text(
+                        'Como calificas la atencion recibida?',
+                        textAlign: TextAlign.center,
+                        style: DS.poppins(
+                          size: 16,
+                          weight: FontWeight.w600,
+                          color: DS.textPrimary,
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Rating options
+                      ..._opciones.map((opt) {
+                        final selected = calificacion == opt['value'];
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => setState(
+                                  () => calificacion = opt['value'] as int),
+                              borderRadius: BorderRadius.circular(16),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: selected
+                                        ? DS.primary
+                                        : DS.divider,
+                                    width: selected ? 2 : 1,
+                                  ),
+                                  boxShadow: selected
+                                      ? [
+                                          BoxShadow(
+                                            color: DS.primary
+                                                .withValues(alpha: 0.15),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ]
+                                      : [
+                                          BoxShadow(
+                                            color: Colors.black
+                                                .withValues(alpha: 0.04),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 22,
+                                      backgroundColor: DS.bg,
+                                      foregroundImage: AssetImage(
+                                        opt['asset'] as String,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Text(
+                                      opt['label'] as String,
+                                      style: DS.poppins(
+                                        size: 15,
+                                        weight: selected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: DS.textPrimary,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    if (selected)
+                                      Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          gradient: DS.nicGradient,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.check_rounded,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: const Color(
-                                  0xFF1F2937,
-                                ), // mismo fondo del card
-                                foregroundImage: AssetImage(
-                                  opt['asset'] as String,
-                                ),
-                              ),
+                        );
+                      }),
 
-                              const SizedBox(width: 12),
-                              Text(
-                                opt['label'] as String,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                      const SizedBox(height: 20),
+
+                      // Observation field
+                      TextField(
+                        controller: _obsCtrl,
+                        maxLines: 3,
+                        style: DS.poppins(
+                          size: 14,
+                          color: DS.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Observacion (opcional)',
+                          hintStyle: DS.poppins(
+                            size: 14,
+                            color: DS.textSecondary.withValues(alpha: 0.5),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                BorderSide(color: DS.divider),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                BorderSide(color: DS.divider),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(
+                                color: DS.primary, width: 1.5),
                           ),
                         ),
                       ),
-                    );
-                  }).toList(),
+
+                      const SizedBox(height: 28),
+
+                      // Submit button
+                      AnimatedOpacity(
+                        opacity: calificacion != null ? 1.0 : 0.5,
+                        duration: const Duration(milliseconds: 200),
+                        child: NicGradientButton(
+                          text: 'Enviar calificacion',
+                          icon: Icons.send_rounded,
+                          onPressed: calificacion == null
+                              ? () {}
+                              : () => _confirmarEnvio(context),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 20),
-
-          // ===== OBSERVACIÓN =====
-          TextField(
-            controller: _obsCtrl,
-            maxLines: 3,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Observación (opcional)',
-              hintStyle: const TextStyle(color: Colors.white38),
-              filled: true,
-              fillColor: const Color(0xFF1F2937),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // ===== BOTÓN =====
-          ElevatedButton(
-            onPressed: calificacion == null
-                ? null
-                : () => _confirmarEnvio(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7C3AED),
-              disabledBackgroundColor: Colors.white12,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Enviar calificación',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  // ================= CONFIRMACIÓN =================
+  // ─── Confirm Dialog ─────────────────────────────────────────────────────────
 
   void _confirmarEnvio(BuildContext context) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF111320),
-        title: const Text(
-          'Confirmar envío',
-          style: TextStyle(color: Colors.white),
+      builder: (_) => Dialog(
+        backgroundColor: DS.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
         ),
-        content: const Text(
-          '¿Desea enviar la calificación?',
-          style: TextStyle(color: Colors.white70),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  gradient: DS.nicGradient,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.send_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Confirmar envio',
+                style: DS.poppins(
+                  size: 18,
+                  weight: FontWeight.w700,
+                  color: DS.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Desea enviar la calificacion?',
+                style: DS.poppins(
+                  size: 14,
+                  color: DS.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: NicOutlineButton(
+                      text: 'Cancelar',
+                      height: 48,
+                      onPressed: _enviando
+                          ? () {}
+                          : () => Navigator.pop(context),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: NicGradientButton(
+                      text: 'Confirmar',
+                      height: 48,
+                      onPressed: _enviando
+                          ? () {}
+                          : () async {
+                              Navigator.pop(context);
+                              await _enviarYVolverHome(context);
+                            },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: _enviando ? null : () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: _enviando
-                ? null
-                : () async {
-                    Navigator.pop(context);
-                    await _enviarYVolverHome(context);
-                  },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7C3AED),
-            ),
-            child: const Text(
-              'Confirmar',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -327,20 +404,41 @@ class _CalificarAtencionScreenState extends State<CalificarAtencionScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gracias por tu calificación')),
-      );
-
-      // 🔴 ENVÍA AL HOME (borra stack)
-     context.go('/home');
-
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gracias por tu calificacion',
+              style: DS.poppins(size: 14, color: Colors.white),
+            ),
+            backgroundColor: DS.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        context.go('/home');
+      }
     } catch (e) {
-  print('userrrrrr: $e');
+      debugPrint('Error envio: $e');
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo enviar la calificación')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No se pudo enviar la calificacion',
+              style: DS.poppins(size: 14, color: Colors.white),
+            ),
+            backgroundColor: DS.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _enviando = false);
     }

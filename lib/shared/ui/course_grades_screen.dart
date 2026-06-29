@@ -12,7 +12,7 @@ double toProgress(double? percent) {
   final v = (percent ?? 0) / 100.0;
   if (v.isNaN || v.isInfinite) return 0.0;
   final c = v.clamp(0.0, 1.0);
-  return (c is double) ? c : (c as num).toDouble();
+  return c.toDouble();
 }
 
 String fmtNum(double x) =>
@@ -340,9 +340,9 @@ class SectionStats {
 
     final hasTotal = total != null;
     final baseMaxTotal =
-        hasTotal ? (GradeItem.toDouble(total!.max) ?? sumMaxVisibles) : sumMaxVisibles;
+        hasTotal ? (GradeItem.toDouble(total.max) ?? sumMaxVisibles) : sumMaxVisibles;
     final baseScoreTotal =
-        hasTotal ? (GradeItem.toDouble(total!.graderaw) ?? sumScore) : sumScore;
+        hasTotal ? (GradeItem.toDouble(total.graderaw) ?? sumScore) : sumScore;
 
     final pCalif = sumMaxCalif > 0 ? (100 * sumScore / sumMaxCalif) : null;
     final pTotal = baseMaxTotal > 0 ? (100 * baseScoreTotal / baseMaxTotal) : null;
@@ -522,7 +522,7 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, DS.bg.withOpacity(0.95)],
+                          colors: [Colors.transparent, DS.bg.withValues(alpha: 0.95)],
                         ),
                       ),
                     ),

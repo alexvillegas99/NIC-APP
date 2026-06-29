@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:nic_pre_u/services/auth_service.dart';
+import 'package:nic_pre_u/services/connectivity_service.dart';
+import 'package:nic_pre_u/services/local_cache.dart';
 import 'package:nic_pre_u/shared/utils/debug_log.dart';
 
 class AsistentesService {
@@ -25,12 +28,12 @@ class AsistentesService {
   List<Map<String, dynamic>> asListOfStringKeyedMaps(dynamic v) {
     if (v is List) {
       return v
-          .where((e) => e is Map)
-          .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))
+          .whereType<Map>()
+          .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e))
           .toList();
     }
     if (v is Map) {
-      return [Map<String, dynamic>.from(v as Map)];
+      return [Map<String, dynamic>.from(v)];
     }
     return <Map<String, dynamic>>[];
   }
@@ -51,8 +54,8 @@ class AsistentesService {
 
   // ========= Moodle: cursos con notas (V2) =========
 
-  /// GET /moodle/courses/with-gradesv2?username=<cedula>
-  /// Devuelve siempre List<dynamic> (vacía si 400 "Usuario no encontrado")
+  // GET /moodle/courses/with-gradesv2?username=<cedula>
+  // Devuelve siempre List<dynamic> (vacía si 400 "Usuario no encontrado")
   Future<List<dynamic>> obtenerNotasV2(String username) async {
     final uri = Uri.parse('$baseUrl/moodle/courses/with-gradesv3/app?username=$username');
     final res = await http.get(uri, headers: await _authHeaders());
@@ -78,8 +81,8 @@ Uri buildOvPdfUri(String cedula) {
 
   // ========= Asistentes (con Orientación Vocacional) =========
 
-  /// GET /asistentes/por-cedula?cedula=<cedula>
-  /// Devuelve SIEMPRE List<Map<String,dynamic>>
+  // GET /asistentes/por-cedula?cedula=<cedula>
+  // Devuelve SIEMPRE List<Map<String,dynamic>>
 Future<List<Map<String, dynamic>>> fetchAsistentesPorCedula({String? cedula}) async {
   final user = await _auth.getUser();
   final ced = (cedula ?? (user?['cedula'] ?? '')).toString().trim();
@@ -167,35 +170,89 @@ Future<List<Map<String, dynamic>>> fetchAsistentesPorCedula({String? cedula}) as
     return c.isEmpty ? null : c;
   }
 
-  /// GET /asistentes/buscar/cursos/:cedula
-Future<List<Map<String, dynamic>>> fetchCursosPorCedula({String? cedula}) async {
-  final user = await _auth.getUser();
-  final ced = (cedula ?? (user?['cedula'] ?? '')).toString().trim();
+  /// GET /asistentes/buscar/cursos/:cedula — cache-first cuando offline
+  Future<List<Map<String, dynamic>>> fetchCursosPorCedula({String? cedula}) async {
+    final user = await _auth.getUser();
+    final ced = (cedula ?? (user?['cedula'] ?? '')).toString().trim();
+    if (ced.isEmpty) return [];
 
-  if (ced.isEmpty) return [];
+    final cacheKey = 'cursos_$ced';
 
-  final uri = Uri.parse('$baseUrl/asistentes/buscar/cursos/$ced');
-  print('uriiiii $uri');
-  final headers = await _authHeaders();
+    Future<List<Map<String, dynamic>>> fromNetwork() async {
+      final uri = Uri.parse('$baseUrl/asistentes/buscar/cursos/$ced');
+      debugPrint('uriiiii $uri');
+      final headers = await _authHeaders();
+      debugLog('GET cursos por cedula', uri.toString());
+      final res = await http.get(uri, headers: headers)
+          .timeout(const Duration(seconds: 10));
+      debugPrint('resssss   ${res.statusCode}');
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final body = json.decode(res.body);
+        final payload =
+            (body is Map && body.containsKey('data')) ? body['data'] : body;
+        final result = asListOfStringKeyedMaps(payload);
+        await LocalCache.set(cacheKey, result);
+        debugPrint('Cursos+notas guardados (${result.length}): true');
+        return result;
+      }
+      if (res.statusCode == 404) return [];
+      throw Exception('Error ${res.statusCode} al obtener cursos');
+    }
 
-  debugLog('GET cursos por cedula', uri.toString());
-
-  final res = await http.get(uri, headers: headers);
-
-  final status = res.statusCode;
-    print('resssss   $status');
-  if (res.statusCode >= 200 && res.statusCode < 300) {
-    final body = json.decode(res.body);
-
-    final dynamic payload =
-        (body is Map && body.containsKey('data')) ? body['data'] : body;
-
-    return asListOfStringKeyedMaps(payload);
+    final online = await ConnectivityService.instance.check();
+    if (online) {
+      try {
+        return await fromNetwork();
+      } catch (_) {
+        final cached = await LocalCache.get(cacheKey);
+        if (cached != null) return asListOfStringKeyedMaps(cached);
+        return [];
+      }
+    } else {
+      final cached = await LocalCache.get(cacheKey);
+      if (cached != null) return asListOfStringKeyedMaps(cached);
+      return [];
+    }
   }
 
-  if (res.statusCode == 404) return [];
+  /// GET /asistentes/buscar/por-cedula/:cedula — cache-first cuando offline
+  Future<List<Map<String, dynamic>>> fetchAsistentesPorCedulaCached({String? cedula}) async {
+    final user = await _auth.getUser();
+    final ced = (cedula ?? (user?['cedula'] ?? '')).toString().trim();
+    if (ced.isEmpty) return [];
 
-  throw Exception('Error ${res.statusCode} al obtener cursos');
-}
+    final cacheKey = 'asistentes_$ced';
 
+    Future<List<Map<String, dynamic>>> fromNetwork() async {
+      final uri = Uri.parse('$baseUrl/asistentes/buscar/por-cedula/$ced');
+      final headers = await _authHeaders();
+      final res = await http.get(uri, headers: headers)
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final body = json.decode(res.body);
+        final payload =
+            (body is Map && body.containsKey('data')) ? body['data'] : body;
+        final result = asListOfStringKeyedMaps(payload);
+        await LocalCache.set(cacheKey, result);
+        return result;
+      }
+      if (res.statusCode == 404) return [];
+      throw Exception('Error ${res.statusCode}');
+    }
+
+    final online = await ConnectivityService.instance.check();
+    if (online) {
+      try {
+        return await fromNetwork();
+      } catch (_) {
+        final cached = await LocalCache.get(cacheKey);
+        if (cached != null) return asListOfStringKeyedMaps(cached);
+        return [];
+      }
+    } else {
+      final cached = await LocalCache.get(cacheKey);
+      if (cached != null) return asListOfStringKeyedMaps(cached);
+      return [];
+    }
+  }
 }

@@ -18,19 +18,19 @@ void debugLog(String label, Object? value) {
   debugPrint('[$ts] $label -> $text');
 }
 
-/// Convierte Map con claves dinámicas a Map<String, dynamic>
+// Convierte Map con claves dinámicas a Map<String, dynamic>
 Map<String, dynamic> mapKeysToString(Map input) {
   return input.map((k, v) => MapEntry(k.toString(), v));
 }
 
-/// Normaliza cualquier payload a List<Map<String, dynamic>>
+// Normaliza cualquier payload a List<Map<String, dynamic>>
 List<Map<String, dynamic>> asListOfStringKeyedMaps(dynamic payload) {
   if (payload == null) return const [];
 
   if (payload is List) {
     return payload
-        .where((e) => e is Map)
-        .map((e) => mapKeysToString(e as Map))
+        .whereType<Map>()
+        .map((e) => mapKeysToString(e))
         .toList();
   }
 
