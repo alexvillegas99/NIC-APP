@@ -60,6 +60,9 @@ app.*.map.json
 android/key.properties
 android/**/*.keystore
 android/**/*.jks
+*.jks
+*.keystore
+.env copy
 
 # Temp/runtime data
 .temp
@@ -70,3 +73,6 @@ pids
 *.pid.lock
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 migrate_working_dir/
+
+# FVM Version Cache
+.fvm/

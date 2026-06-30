@@ -1,14 +1,12 @@
 name: nic_pre_u
-description: "APP DE CUPONERA Y DESCUENTOS"
+description: 'APP DE CUPONERA Y DESCUENTOS'
 
-publish_to: "none" # Remove this line if you wish to publish to pub.dev
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-
-version: 3.1.1+3
+version: 3.1.6+1
 
 environment:
   sdk: ^3.8.1
-
 
 dependencies:
   flutter:
@@ -51,16 +49,14 @@ dev_dependencies:
 
   flutter_lints: ^5.0.0
 
-
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/imagenes/logo.png" 
-  remove_alpha_ios: true  
-
+  image_path: 'assets/imagenes/logo.png'
+  remove_alpha_ios: true
 
 flutter_native_splash:
-  color: "#1F2147"
+  color: '#1F2147'
   image: assets/imagenes/logonic.png
   android: true
   ios: true

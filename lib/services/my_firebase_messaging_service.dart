@@ -8,8 +8,12 @@ bool _firebaseMessagingStarted = false;
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  debugPrint('Notificación en segundo plano: ${message.messageId}');
+  try {
+    await Firebase.initializeApp();
+    debugPrint('Notificación en segundo plano: ${message.messageId}');
+  } catch (err) {
+    debugPrint('Firebase no disponible (falta configuración): $err');
+  }
 }
 
 Future<void> initFirebaseMessagingIfSupported() async {
